@@ -468,7 +468,7 @@ function cardHtml(g,solo){
 }
 function renderGroups(list=DATA.groups,withSolo=true){
   let h=list.map(g=>cardHtml(g)).join("");
-  if(withSolo&&DATA.solo&&DATA.solo.items&&DATA.solo.items.length) h+=cardHtml(DATA.solo,true);
+  if(withSolo&&DATA.solo&&DATA.solo.items&&DATA.solo.items.length) h=cardHtml(DATA.solo,true)+h;   // 11/10 티마처럼 개별이슈가 맨 앞
   $("#groups").innerHTML=h;
 }
 /* 테마 상세 (3차) — 테마개요·최근이슈·소속 종목 전체 */
