@@ -1051,7 +1051,7 @@ async function loadLive(manual){
   if(!d&&LIVE&&!window.claude){d=LIVE;how=isPage?"내 주소":"PC 파일";}
   if(!d){try{d=await loadFromDrive();if(d)how="구글 드라이브";}catch(e){if(manual)$("#setMsg").textContent="드라이브: "+e.message;}}
   const u=feedUrl();
-  if(!d&&u){try{d=await loadFromUrl(u);how="웹앱";}catch(e){if(manual)$("#setMsg").textContent="웹앱 주소에서 못 읽음: "+e.message;}}
+  if(!d&&u){try{d=await loadFromUrl(u);how=isPage?"내 주소":"웹앱";}catch(e){if(manual)$("#setMsg").textContent="웹앱 주소에서 못 읽음: "+e.message;}}
   if(d&&applyLive(d)){
     if(LIVE_CHARTS)CHARTS=LIVE_CHARTS; else {CHART_ALL=null;}   // 새 데이터면 차트도 다시 받게
     renderAll();
