@@ -503,6 +503,7 @@ function applyLive(d){
   DATA.rank = d.rank;
   if(d.fz) DATA.fz = d.fz;
   if(d.search) DATA.search = d.search;   // 11/10 실시간 종목조회 순위
+  if(d.nxt!=null){ DATA.nxt = d.nxt; NXTSET=null; }   // 11/10 넥스트장 거래 종목
   if(d.cal&&d.cal.length) DATA.cal = d.cal;
   DATA.jb_env = d.jb_env||""; DATA.jb_plan = d.jb_plan||[];    // 지금 장 상황 (코스피 20일선 위/아래)
   DATA.vi = d.vi||{};            // VI(변동성완화장치) {코드:[발동시각, 지금발동중, 횟수, 구분]} (11/10)
@@ -647,7 +648,7 @@ function renderSched(){
 /* ---------- 4. F존 ---------- */
 /* 11/10: 14시~15:30 에는 종베 탭이 먼저 (강의: 14:30~15:20 종베 준비·매수) */
 let fzMode=(()=>{const h=kstNow().slice(0,5);return (h>="14:00"&&h<="15:30")?"jb":"fzp";})();
-const JB_GRADE={S:"#e8392f",A:"#f0a500",B:"#8a97a5",C:"#8a97a5","제외":"#4a5568"};
+const JB_GRADE={S:"#e8392f",A:"#f0a500",B:"#8a97a5",C:"#c3ccd6","제외":"#4a5568"};
 const PV_COLOR={"피뢰침":"#e8392f","하트존":"#2b5fd9","어중간한양봉":"#8a97a5","연속기준봉":"#13b36a"};
 function setFz(m,btn){fzMode=m;[...$("#fzPills").children].forEach(b=>b.classList.toggle("on",b===btn));renderFz();}
 function zoneCell(v,hit,idx){ return `<span class="${hit===idx?"box":""}">${f(v)}</span>`; }
@@ -659,6 +660,9 @@ function jbPlain(el){ // 강의 이름·장 번호 빼기
   const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let n;
   while((n=w.nextNode())){let t=n.nodeValue;re.forEach(([a,b])=>t=t.replace(a,b));if(t!==n.nodeValue)n.nodeValue=t;}
 }
+let NXTSET=null;
+function isNxt(code){ if(!DATA.nxt) return null; if(!NXTSET) NXTSET=new Set(String(DATA.nxt).split(";")); return NXTSET.has(code); }
+function nmCls(code){ const v=isNxt(code); return v===null?"":(v?"nxt":"reg"); }   // 적갈색 = 넥스트장에서도 거래 · 검정 = 정규장만
 function jbStockOf(code){
   const st=(DATA.stk||{})[code];if(st&&st.p)return {p:st.p,r:st.r};
   const a=((DATA.rank||{}).amt||[]).find(r=>r[5]===code);if(a)return {p:a[1],r:a[2]};
@@ -688,25 +692,26 @@ function jbSimple(D){
   const t1=`<h6 class="jbh">🏆 오늘 시장의 대장 찾기 <span class="sub">4곳에 몇 위로 나왔나 비교 (1위 25점 · 5위 5점, 최고 100점)</span></h6>
   <table class="jbeasyt"><tr><th>#</th><th>종목</th><th>점수</th><th>조회</th><th>대금</th><th>상따</th><th>종베</th></tr>
   ${top.map((m,i)=>{const k=kind(m),inf=m.info||jbStockOf(m.code);return `<tr class="clk" onclick="openStock('${m.code}','${jsq(m.name||"")}')">
-    <td class="no">${i+1}</td><td class="nm2"><b>${esc(m.name||m.code)}</b> <span class="kb" style="background:${k[1]}">${k[0]}</span>${inf?`<span class="sub2 ${cls(inf.r)}">${f(inf.p)} ${Number(inf.r).toFixed(2)}%</span>`:""}</td>
+    <td class="no">${i+1}</td><td class="nm2"><b class="${nmCls(m.code)}">${esc(m.name||m.code)}</b> <span class="kb" style="background:${k[1]}">${k[0]}</span>${inf?`<span class="sub2 ${cls(inf.r)}">${f(inf.p)} ${Number(inf.r).toFixed(2)}%</span>`:""}</td>
     <td class="sc">${m.score}</td><td>${dot(m,"조회")}</td><td>${dot(m,"대금")}</td><td>${dot(m,"상따")}</td><td>${dot(m,"종베")}</td></tr>`;}).join("")}
   ${top.length?"":'<tr><td colspan="7" style="padding:14px;color:var(--sub)">아직 비교할 자료가 없어요 (수집기가 돌면 채워져요)</td></tr>'}</table>
   <p class="disc" style="padding:4px 8px"><b>조회</b> = 키움 실시간 종목조회 순위(사람들이 지금 많이 찾아보는 종목) · <b>대금</b> = 거래대금 상위 · <b>상따</b> = 오늘 27% 넘게 오른 종목 · <b>종베</b> = 종베 점수 순위<br>
-  <span class="kb" style="background:#e8392f">대장주</span> 3곳 이상에 나옴 · <span class="kb" style="background:#f0a500">주도주</span> 돈이 크게 몰리며 오름 · <span class="kb" style="background:#7b3fe4">끼도주</span> 돈은 덜해도 확 오르거나 관심 집중${(DATA.search||[]).length?"":" · ⚠ 실시간 종목조회는 새 수집기부터 들어와요"}</p>`;
+  <span class="kb" style="background:#e8392f">대장주</span> 3곳 이상에 나옴 · <span class="kb" style="background:#f0a500">주도주</span> 돈이 크게 몰리며 오름 · <span class="kb" style="background:#7b3fe4">끼도주</span> 돈은 덜해도 확 오르거나 관심 집중 · 종목 이름 <b class="nxt">적갈색</b> = 넥스트장에서도 거래, <b class="reg">검정</b> = 정규장만${(DATA.search||[]).length?"":" · ⚠ 실시간 종목조회는 새 수집기부터 들어와요"}</p>`;
   const cut=jbAll.slice(0,5);
   const todo=r=>{const g=r[1], up=Number(r[5])>=29.5, w=(g==="S"||g==="A")?"사려는 돈의 절반":"조금만 (평소의 1/4)";
     return `<span class="reg">⏰ 오후 3:00~3:20 · ${up?"상한가 종목이라 조금만":w} 사기</span>
-      <span class="nxt">🌙 저녁 7:50~8:00 넥스트장 · ${up?"추가 안 함":"나머지 절반 더 (선택)"}</span>
+      ${isNxt(r[3])===false?`<span class="reg">🌙 넥스트장 거래 안 되는 종목 — 오후 3:20 전에 끝내기</span>`:`<span class="nxt">🌙 저녁 7:50~8:00 넥스트장 · ${up?"추가 안 함":"나머지 절반 더 (선택)"}</span>`}
       <span class="reg">☀ 내일 아침 · 오르면 10분 안에 70~80% 팔기 / 내리면 −4%에서 손절</span>
       ${r[14]?`<span class="warn">⚠ ${esc(String(r[14]).split("—")[0])}</span>`:""}`;};
   const t2=`<h6 class="jbh">✅ 오늘 종베 추천 5 <span class="sub">점수 높은 순 — 실제로는 2~3개만</span></h6>
   <table class="jbeasyt jbpick"><tr><th>#</th><th>종목·점수</th><th>현재가</th><th>할 일 <span class="sub2"><span class="reg">정규장</span> · <span class="nxt">넥스트장</span></span></th></tr>
   ${cut.map((r,i)=>`<tr class="clk" onclick="openStock('${r[3]||""}','${jsq(r[2])}')">
-    <td class="no">${i+1}</td><td class="nm2"><span class="kb" style="background:${JB_GRADE[r[1]]||"#8a97a5"}">${r[1]}</span> <b>${esc(r[2])}</b><span class="sub2">${r[15]}점 · 대금 ${String(r[6]).replace("≈","")}억</span></td>
+    <td class="no">${i+1}</td><td class="nm2"><span class="kb" style="background:${JB_GRADE[r[1]]||"#8a97a5"}">${r[1]}</span> <b class="${nmCls(r[3])}">${esc(r[2])}</b><span class="sub2">${r[15]}점 · 대금 ${String(r[6]).replace("≈","")}억</span></td>
     <td><b class="${cls(r[5])}">${f(r[4])}</b><span class="sub2 ${cls(r[5])}">${Number(r[5]).toFixed(2)}%</span></td>
     <td class="todo">${todo(r)}</td></tr>`).join("")}
   ${cut.length?"":'<tr><td colspan="4" style="padding:14px;color:var(--sub)">조건에 드는 종목이 아직 없어요</td></tr>'}</table>
-  <p class="disc" style="padding:4px 8px">검정 글씨 = 정규장(오전 9시~오후 3시 30분) · <span style="color:#8b2e16;font-weight:700">적갈색 글씨 = 넥스트장(저녁 8시까지)</span> · 점수가 높을수록 조건을 많이 만족 (S 70점↑ · A 50↑ · B 30↑) · 종목을 누르면 차트로 가요</p>`;
+  <p class="disc" style="padding:4px 8px">검정 글씨 = 정규장(오전 9시~오후 3시 30분) · <span style="color:#8b2e16;font-weight:700">적갈색 글씨 = 넥스트장(저녁 8시까지)</span> · 종목 이름 색: <b class="reg">검정 = 정규장에서만 거래</b> · <b class="nxt">적갈색 = 넥스트장(저녁 8시까지)에서도 거래</b><br>
+  등급(점수가 높을수록 조건을 많이 만족): <span class="kb" style="background:${JB_GRADE.S}">S</span> 70점 이상 · <span class="kb" style="background:${JB_GRADE.A}">A</span> 50~69점 · <span class="kb" style="background:${JB_GRADE.B}">B</span> 30~49점 · <span class="kb" style="background:${JB_GRADE.C||"#8a97a5"}">C</span> 30점 아래 · 종목을 누르면 차트로 가요</p>`;
   return sum+t1+t2;
 }
 
