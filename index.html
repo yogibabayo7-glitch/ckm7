@@ -233,6 +233,24 @@ main{min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .jbw details.jbd summary{font-size:11px;color:#2b5fd9;cursor:pointer;list-style:none}
 .jbw details.jbd summary::before{content:"▸ "}.jbw details.jbd[open] summary::before{content:"▾ "}
 .jbw details.jbdisc{margin:8px 6px}
+/* 11/10 종베 쉽게 보기 */
+.jbeasy{font-size:12.5px;line-height:1.7}
+table.jbeasyt{width:100%;border-collapse:collapse;margin:4px 0}
+table.jbeasyt th{font-size:11px;color:var(--sub);font-weight:600;padding:5px 3px;border-bottom:1px solid #e3e9ef;text-align:center}
+table.jbeasyt td{padding:7px 3px;border-bottom:1px solid #eef2f6;text-align:center;font-size:12px;vertical-align:middle}
+table.jbeasyt td.no{font-weight:800;font-size:15px;color:#2b5fd9;width:22px}
+table.jbeasyt td.nm2{text-align:left}
+table.jbeasyt td.sc{font-weight:800;font-size:15px}
+table.jbeasyt .sub2{display:block;font-size:10.5px;color:var(--sub);font-weight:400}
+table.jbeasyt .kb,.disc .kb{display:inline-block;color:#fff;font-size:10px;font-weight:700;border-radius:4px;padding:0 5px;vertical-align:1px}
+table.jbeasyt .jbdot{color:#c3ccd6;font-size:11px}
+table.jbeasyt .jbdot.on{display:inline-block;background:#e8f0ff;color:#2b5fd9;border-radius:9px;padding:1px 6px;font-size:11px}
+table.jbpick td.todo{text-align:left;font-size:11.5px;line-height:1.55}
+table.jbpick td.todo span{display:block}
+.reg{color:#111}.nxt{color:#8b2e16;font-weight:600}
+table.jbpick td.todo .warn{color:var(--dn);font-size:11px}
+details.jball{margin-top:14px}
+details.jball>summary{font-size:12.5px!important;padding:8px;background:#f3f6fa;border-radius:8px}
 </style>
 </head>
 <body>
@@ -485,6 +503,7 @@ function applyLive(d){
   DATA.solo = d.solo||null;
   DATA.rank = d.rank;
   if(d.fz) DATA.fz = d.fz;
+  if(d.search) DATA.search = d.search;   // 11/10 실시간 종목조회 순위
   if(d.cal&&d.cal.length) DATA.cal = d.cal;
   DATA.jb_env = d.jb_env||""; DATA.jb_plan = d.jb_plan||[];    // 지금 장 상황 (코스피 20일선 위/아래)
   DATA.vi = d.vi||{};            // VI(변동성완화장치) {코드:[발동시각, 지금발동중, 횟수, 구분]} (11/10)
@@ -634,6 +653,64 @@ const PV_COLOR={"피뢰침":"#e8392f","하트존":"#2b5fd9","어중간한양봉"
 function setFz(m,btn){fzMode=m;[...$("#fzPills").children].forEach(b=>b.classList.toggle("on",b===btn));renderFz();}
 function zoneCell(v,hit,idx){ return `<span class="${hit===idx?"box":""}">${f(v)}</span>`; }
 function gapTxt(g,hit){ return (hit>=0||g==null)?"":`<span class="m sub">${g<=0?"진입":"−"+Number(g).toFixed(1)+"%"}</span>`; }
+/* ===== 11/10 종베 쉽게 보기 — 사용자 요청: 점수 높은 5개만 · 표로 · 정규장(검정)/넥스트장(적갈색) · 강의 이름 빼기 =====
+   ① 시장 대장주 찾기 = 실시간 종목조회 · 거래대금 상위 · 당일주도주(상따) · 주도주 종베 4곳 비교 (각 1~5위만, 1위 25점 → 5위 5점, 4곳 합 100점) */
+function jbPlain(el){ // 강의 이름·장 번호 빼기
+  const re=[[/(뉴하트|혼마)\s*\d*\s*(특강|강)?\s*[-:：]?\s*/g,""],[/\(?\s*6가지\s*\d+장\s*\)?/g,""],[/\(?\s*6가지\s*부록\s*\d*\s*\)?/g,""],[/강의\s*\d+강\s*(JB\d·?JB?\d?)?\s*—?\s*/g,""],[/\[보조\]\s*/g,""],[/강의 체크리스트/g,"체크리스트"],[/\s+·\s+·/g," ·"]];
+  const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let n;
+  while((n=w.nextNode())){let t=n.nodeValue;re.forEach(([a,b])=>t=t.replace(a,b));if(t!==n.nodeValue)n.nodeValue=t;}
+}
+function jbStockOf(code){
+  const st=(DATA.stk||{})[code];if(st&&st.p)return {p:st.p,r:st.r};
+  const a=((DATA.rank||{}).amt||[]).find(r=>r[5]===code);if(a)return {p:a[1],r:a[2]};
+  return null;
+}
+function jbSimple(D){
+  const pts=[25,20,15,10,5], M={};
+  const add=(key,code,name,rank,info)=>{if(!code||rank>5)return;const m=M[code]||(M[code]={code,name,score:0,src:{},info:null});m.score+=pts[rank-1];m.src[key]=rank;if(name&&!m.name)m.name=name;if(info&&!m.info)m.info=info;};
+  (DATA.search||[]).slice(0,5).forEach((r,i)=>add("조회",r[1],r[2],i+1));
+  ((DATA.rank||{}).amt||[]).slice(0,5).forEach((r,i)=>add("대금",r[5],r[0],i+1,{p:r[1],r:r[2]}));
+  (DATA.fz.sf||[]).slice(0,5).forEach((r,i)=>add("상따",r[12],r[0],i+1));
+  const jbAll=[...(D.top||[]),...(D.upper||[])].filter(r=>r[15]!=null).sort((a,b)=>b[15]-a[15]);
+  jbAll.slice(0,5).forEach((r,i)=>add("종베",r[3],r[2],i+1,{p:r[4],r:r[5]}));
+  const kind=m=>{const n=Object.keys(m.src).length, s=m.src;
+    if(n>=3||(s.대금&&s.대금<=3&&s.조회))return ["대장주","#e8392f","시장에서 제일 센 종목 — 돈도 몰리고 사람들도 제일 많이 봄"];
+    if(s.대금&&(s.종베||s.상따))return ["주도주","#f0a500","돈이 크게 몰리면서 오르는 종목"];
+    if((s.상따||s.조회)&&!s.대금)return ["끼도주","#7b3fe4","돈은 덜하지만 확 오르거나 관심이 쏠린 종목"];
+    return ["관심주","#8a97a5","한 곳에만 나온 종목"];};
+  const top=Object.values(M).sort((a,b)=>b.score-a.score).slice(0,5);
+  const dot=(m,k)=>m.src[k]?`<b class="jbdot on">${m.src[k]}위</b>`:`<span class="jbdot">—</span>`;
+  const env=D.env&&D.env!=="모름"?D.env:"";
+  const splitTxt=env==="하락장"
+    ? `<b>지금은 하락장</b>이에요 → <b>한 번에 다 사지 말고 4번에 나눠</b> 사세요. 예) <b>1:1:1:1</b> = 똑같은 양으로 4번 · <b>1:2:3:4</b> = 처음엔 조금, 내려갈수록 더 많이 · <b>1:2:2:2</b> = 처음 조금, 나머지는 같게`
+    : env==="상승장" ? `<b>지금은 상승장</b>이에요 → 좋은 종목에 조금 더 사도 되지만, 그래도 2번 이상 나눠 사세요`
+    : `한 번에 다 사지 말고 나눠 사세요`;
+  const sum=`<div class="jbhd jbeasy">${splitTxt}<br>· 밤새 들고 가는 돈은 <b>전체의 20% 정도</b>만 (한 번에 50% 넘기지 않기) · 한 번 손해는 <b>내 돈의 2% 안</b>에서 끊기 · 오전 10시 넘어서 물타기 금지</div>`;
+  const t1=`<h6 class="jbh">🏆 오늘 시장의 대장 찾기 <span class="sub">4곳에 몇 위로 나왔나 비교 (1위 25점 · 5위 5점, 최고 100점)</span></h6>
+  <table class="jbeasyt"><tr><th>#</th><th>종목</th><th>점수</th><th>조회</th><th>대금</th><th>상따</th><th>종베</th></tr>
+  ${top.map((m,i)=>{const k=kind(m),inf=m.info||jbStockOf(m.code);return `<tr class="clk" onclick="openStock('${m.code}','${jsq(m.name||"")}')">
+    <td class="no">${i+1}</td><td class="nm2"><b>${esc(m.name||m.code)}</b> <span class="kb" style="background:${k[1]}">${k[0]}</span>${inf?`<span class="sub2 ${cls(inf.r)}">${f(inf.p)} ${Number(inf.r).toFixed(2)}%</span>`:""}</td>
+    <td class="sc">${m.score}</td><td>${dot(m,"조회")}</td><td>${dot(m,"대금")}</td><td>${dot(m,"상따")}</td><td>${dot(m,"종베")}</td></tr>`;}).join("")}
+  ${top.length?"":'<tr><td colspan="7" style="padding:14px;color:var(--sub)">아직 비교할 자료가 없어요 (수집기가 돌면 채워져요)</td></tr>'}</table>
+  <p class="disc" style="padding:4px 8px"><b>조회</b> = 키움 실시간 종목조회 순위(사람들이 지금 많이 찾아보는 종목) · <b>대금</b> = 거래대금 상위 · <b>상따</b> = 오늘 27% 넘게 오른 종목 · <b>종베</b> = 종베 점수 순위<br>
+  <span class="kb" style="background:#e8392f">대장주</span> 3곳 이상에 나옴 · <span class="kb" style="background:#f0a500">주도주</span> 돈이 크게 몰리며 오름 · <span class="kb" style="background:#7b3fe4">끼도주</span> 돈은 덜해도 확 오르거나 관심 집중${(DATA.search||[]).length?"":" · ⚠ 실시간 종목조회는 새 수집기부터 들어와요"}</p>`;
+  const cut=jbAll.slice(0,5);
+  const todo=r=>{const g=r[1], up=Number(r[5])>=29.5, w=(g==="S"||g==="A")?"사려는 돈의 절반":"조금만 (평소의 1/4)";
+    return `<span class="reg">⏰ 오후 3:00~3:20 · ${up?"상한가 종목이라 조금만":w} 사기</span>
+      <span class="nxt">🌙 저녁 7:50~8:00 넥스트장 · ${up?"추가 안 함":"나머지 절반 더 (선택)"}</span>
+      <span class="reg">☀ 내일 아침 · 오르면 10분 안에 70~80% 팔기 / 내리면 −4%에서 손절</span>
+      ${r[14]?`<span class="warn">⚠ ${esc(String(r[14]).split("—")[0])}</span>`:""}`;};
+  const t2=`<h6 class="jbh">✅ 오늘 종베 추천 5 <span class="sub">점수 높은 순 — 실제로는 2~3개만</span></h6>
+  <table class="jbeasyt jbpick"><tr><th>#</th><th>종목·점수</th><th>현재가</th><th>할 일 <span class="sub2"><span class="reg">정규장</span> · <span class="nxt">넥스트장</span></span></th></tr>
+  ${cut.map((r,i)=>`<tr class="clk" onclick="openStock('${r[3]||""}','${jsq(r[2])}')">
+    <td class="no">${i+1}</td><td class="nm2"><span class="gr" style="background:${JB_GRADE[r[1]]||"#8a97a5"}">${r[1]}</span> <b>${esc(r[2])}</b><span class="sub2">${r[15]}점 · 대금 ${String(r[6]).replace("≈","")}억</span></td>
+    <td><b class="${cls(r[5])}">${f(r[4])}</b><span class="sub2 ${cls(r[5])}">${Number(r[5]).toFixed(2)}%</span></td>
+    <td class="todo">${todo(r)}</td></tr>`).join("")}
+  ${cut.length?"":'<tr><td colspan="4" style="padding:14px;color:var(--sub)">조건에 드는 종목이 아직 없어요</td></tr>'}</table>
+  <p class="disc" style="padding:4px 8px">검정 글씨 = 정규장(오전 9시~오후 3시 30분) · <span style="color:#8b2e16;font-weight:700">적갈색 글씨 = 넥스트장(저녁 8시까지)</span> · 점수가 높을수록 조건을 많이 만족 (S 70점↑ · A 50↑ · B 30↑) · 종목을 누르면 차트로 가요</p>`;
+  return sum+t1+t2;
+}
+
 function renderFz(){
   { const _el=document.getElementById("fzTable"); if(_el) _el.classList.remove("jbw"); }
   const el=$("#fzTable");
@@ -663,7 +740,7 @@ function renderFz(){
       <td data-l="과거 1건당" style="font-size:11.5px">${r[13]?`<b class="${r[13].exp>0?"up":"dn"}">${r[13].exp>0?"+":""}${r[13].exp}%</b><span class="m sub">${r[13].win}% · ${r[13].n}건</span>`:'<span class="sub">기준표<br>없음</span>'}</td></tr>`;
     const head=`<tr><th>등급·종목<br><span class="sub">점수·근거</span></th><th>현재가</th><th>대금<br><span class="sub">(억)</span></th><th>프로그램<br><span class="sub">외인/기관</span></th><th>과거<br><span class="sub">1건당</span></th></tr>`;
     el.classList.add("jbw");
-    el.innerHTML=`<div class="jbhd"><b>${phase[0]}</b> ${phase[1]}${D.env&&D.env!=="모름"?` · 지금 <b style="background:${D.env==="상승장"?"#13b36a":"#4a5568"}">${D.env}</b>`:""}${th?`<br>오늘 거래대금 상위 10 테마 — <b style="background:#2b5fd9">${th}</b>`:""}${(DATA.jb_plan||[]).length?`<br>${(DATA.jb_plan||[]).map(x=>esc(x)).join(" · ")}`:""}</div>
+    el.innerHTML=jbSimple(D)+`<details class="jbd jball"><summary>전체 목록·자세한 근거 보기</summary><div class="jbhd"><b>${phase[0]}</b> ${phase[1]}${D.env&&D.env!=="모름"?` · 지금 <b style="background:${D.env==="상승장"?"#13b36a":"#4a5568"}">${D.env}</b>`:""}${th?`<br>오늘 거래대금 상위 10 테마 — <b style="background:#2b5fd9">${th}</b>`:""}${(DATA.jb_plan||[]).length?`<br>${(DATA.jb_plan||[]).map(x=>esc(x)).join(" · ")}`:""}</div>
     <h6 class="jbh">① 거래대금 상위 종베 <span class="sub">큰손이 가는 자리 — @주도주종베(상위 30·+1%↑) · @끼도주종베(상위 35·양봉·120봉 최고종가)</span></h6>
     <table>${head}${(D.top||[]).map(r=>row(r,true)).join("")}${(D.top||[]).length?"":'<tr><td colspan="5" style="padding:16px;color:var(--sub)">조건에 드는 종목이 아직 없어요</td></tr>'}</table>
     <h6 class="jbh">② 상한가 종베 <span class="sub" style="color:var(--dn)">상한가라고 다 하면 큰일 — 가끔만, 위 조건까지 같이 볼 것</span></h6>
@@ -704,7 +781,8 @@ function renderFz(){
     둘 다 목표 4%↑ · 10시까지 해결 · <b>추매 없음</b> · D+1 저점 이탈 손절.
     <b>⚠어중간한 양봉</b>(크게 올랐는데 애매하게만 밀림)은 피뢰침도 하트존도 아니라서 강의에서 가장 조심하라는 구간 — 과비중 금지·현금 남기기.<br>
     <b>'과거' 칸은 생각이 아니라 측정값</b>입니다 — 전 종목 2년치에서 같은 조건(거래대금 구간 × 지금 장 상황)의 1건당 기대수익·승률·건수. (없으면 종베백테스트.bat 또는 16:10 자동)<br>
-    사는 때 15:00~15:20(비중 50%) · 19:50~20:00 NXT 추가(선택) · 파는 때 다음날 보합·상승이면 10분 안 70~80% 정리, 나머지 20시 종가 +3% / 하락이면 추매 없이 평단 −4% 손절</p></details>`;
+    사는 때 15:00~15:20(비중 50%) · 19:50~20:00 NXT 추가(선택) · 파는 때 다음날 보합·상승이면 10분 안 70~80% 정리, 나머지 20시 종가 +3% / 하락이면 추매 없이 평단 −4% 손절</p></details></details>`;
+    jbPlain(el);
     return;
   }
   if(fzMode==="sf"){
