@@ -185,6 +185,14 @@ tr.clk:hover td{background:#f7fbfd}
 .bdg{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:700}
 .k-theme{background:var(--up)}.k-item{background:#f08a1d}.k-earn{background:#f08a1d}.k-ipo{background:#9b59f5}.k-lock{background:#1e9be0}.k-pol{background:#1a4fd8}.k-ev{background:var(--up)}
 .k-list{background:#13b36a}.k-hol{background:#4a5568}    /* 신규상장 · 휴장 (11/10) */
+.k-add{background:#0e8f7e}.k-pres{background:#d23f8e}.bdg.k-add,.bdg.k-pol{font-size:9px}    /* 13차: 추가상장 · 대통령 · 정치경제 */
+/* 13차: 1강 시장흐름 타임라인 (마켓중심 위, 옆으로 넘겨 봄) */
+.tl{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch}
+.tl .t{flex:none;background:#fff;border-radius:10px;padding:6px 9px;box-shadow:0 2px 6px rgba(0,0,0,.06);font-size:11.5px;min-width:104px}
+.tl .t .hm{font-weight:800;color:var(--sub);font-size:10.5px}
+.tl .t .one{font-weight:800;font-size:12.5px;cursor:pointer}
+.tl .t.chg{border:1.5px solid var(--up)}
+.tl .t .ksp{font-size:10px;margin-top:2px}
 .day{background:#fff;border-radius:12px;padding:8px 10px;margin-bottom:10px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
 .day.today{border:2px solid var(--pink)}
 .day h4{text-align:center;font-size:13px;font-weight:700;margin-bottom:6px}
@@ -276,6 +284,7 @@ details.jball>summary{font-size:12.5px!important;padding:8px;background:#f3f6fa;
 <main id="main">
   <section class="view on" id="v-market">
     <div class="hint" id="hintMarket">🔎 지금 시장에서 가장 강한 테마만 모아 보여줍니다. 노란 종목 = 상한가 · 테마 이름을 누르면 소속 종목 전체</div>
+    <div id="tline"></div>
     <div class="grid2" id="groups"></div>
   </section>
 
@@ -293,8 +302,20 @@ details.jball>summary{font-size:12.5px!important;padding:8px;background:#f3f6fa;
     <div class="wk"><span class="num" id="schedNum">9</span><span class="arr" onclick="schedMove(-1)">‹</span><span class="rng" id="schedRng"></span><span class="arr" onclick="schedMove(1)">›</span>
       <span class="seg"><span class="on" id="segDay" onclick="setSchedMode('day')">일</span><span id="segWeek" onclick="setSchedMode('week')">주</span></span></div>
     <div class="legend">
-      <span><i class="k-theme"></i>테마</span><span><i class="k-item"></i>개별·실적</span><span><i class="k-list"></i>신규상장</span><span><i class="k-ipo"></i>공모청약</span><span><i class="k-lock"></i>보호예수 해제</span><span><i class="k-hol"></i>휴장</span><span><i class="k-pol"></i>제도·해외</span>
+      <span><i class="k-theme"></i>테마</span><span><i class="k-item"></i>개별·실적</span><span><i class="k-list"></i>신규상장</span><span><i class="k-ipo"></i>공모청약</span><span><i class="k-lock"></i>보호예수 해제</span><span><i class="k-add"></i>추가상장</span><span><i class="k-pres"></i>대통령</span><span><i class="k-hol"></i>휴장</span><span><i class="k-pol"></i>정치·경제</span>
     </div>
+    <div class="pills sm" id="schedPills">
+      <button class="on" onclick="setSchedKind('all',this)">전체</button>
+      <button onclick="setSchedKind('theme',this)">테마</button>
+      <button onclick="setSchedKind('item',this)">개별·실적</button>
+      <button onclick="setSchedKind('list',this)">신규상장</button>
+      <button onclick="setSchedKind('ipo',this)">공모청약</button>
+      <button onclick="setSchedKind('lock',this)">의무보호해제</button>
+      <button onclick="setSchedKind('add',this)">추가상장</button>
+      <button onclick="setSchedKind('pres',this)">대통령</button>
+      <button onclick="setSchedKind('pol',this)">정치·경제</button>
+    </div>
+    <div class="hint">📖 일정 매매(4강): 재료(일정)가 있는 종목은 <b>일정 전에 미리 매수 → 발표 전후에 매도</b> (재료 소멸) · 보호예수 해제·추가상장은 물량 부담 = 조심</div>
     <div id="schedList"></div>
     <p class="disc">주의사항 : 자료를 참고하되 내부적으로 가공처리하므로 오류가 있을 수 있습니다. 일정은 DART 공시와 네이버 뉴스 제목에서 날짜를 읽어 만든 것이라 빠지거나 틀릴 수 있어요. 해당 정보는 투자 권유나 종목 추천이 아닙니다.</p>
   </section>
@@ -505,6 +526,7 @@ function applyLive(d){
   if(d.search) DATA.search = d.search;   // 11/10 실시간 종목조회 순위
   if(d.nxt!=null){ DATA.nxt = d.nxt; NXTSET=null; }   // 11/10 넥스트장 거래 종목
   if(d.cal&&d.cal.length) DATA.cal = d.cal;
+  if(d.tl) DATA.tl = d.tl;       // 13차: 1강 시장흐름 타임라인
   DATA.jb_env = d.jb_env||""; DATA.jb_plan = d.jb_plan||[];    // 지금 장 상황 (코스피 20일선 위/아래)
   DATA.vi = d.vi||{};            // VI(변동성완화장치) {코드:[발동시각, 지금발동중, 횟수, 구분]} (11/10)
   DATA.flow = d.flow||{};        // 5차: 종목별 수급·프로그램 순매수(억) {code:{n,d:[[날짜,개인,외국인,기관,프로그램,종가,등락률]…],at}}
@@ -519,7 +541,7 @@ function applyLive(d){
   return true;
 }
 function setSrc(state, txt){ const el=$("#src"); el.className="src "+state; $("#srcTxt").textContent=txt; }
-function renderAll(){ renderGroups();renderRank();renderSched();renderFz();renderTotal();renderMemo();renderCal();renderBars(); }
+function renderAll(){ renderTimeline();renderGroups();renderRank();renderSched();renderFz();renderTotal();renderMemo();renderCal();renderBars(); }
 
 /* ---------- 1. 마켓중심 — 테마 카드 (종목 2~7개) + 개별이슈 ---------- */
 /* 11/10: 카드 종목 = 테마 전체 종목(all) 중 지금 등락률 높은 4개 (10초 시세로 계속 다시 줄 세움) */
@@ -558,6 +580,24 @@ function cardHtml(g,solo){
     <div class="r2"><b class="${cls(s.pct)}">${f(s.p)}</b><span>${s.t||""}</span><span>${s.amt}</span></div>
     ${candleHtml(s)}
   </div>`).join("")}</div>`;
+}
+/* 13차: 1강 '시장흐름파악' 타임라인 — 30분마다 1~3위 테마 스냅샷, 1위가 바뀐 칸은 빨간 테두리+🔄 */
+function renderTimeline(){
+  const el=$("#tline"); if(!el) return;
+  const rows=DATA.tl||[];
+  if(!rows.length){ el.innerHTML=""; return; }
+  let prev=null,h="";
+  rows.forEach(r=>{
+    const tops=r[2]||[], one=tops[0]||[];
+    const chg=prev&&one[0]&&prev!==one[0];
+    h+=`<div class="t ${chg?"chg":""}"><div class="hm">${esc(r[0])}${chg?" 🔄":""}</div>
+      <div class="one" onclick="openTheme('${jsq(one[0]||"")}')">${esc(one[0]||"—")} <span class="${cls(one[1])}">${one[1]!=null?sg(one[1]):""}</span></div>
+      ${tops.slice(1).map(t=>`<div class="sub" style="font-size:10.5px">${esc(t[0])} <span class="${cls(t[1])}">${t[1]!=null?sg(t[1]):""}</span></div>`).join("")}
+      ${r[1]!=null?`<div class="ksp ${cls(r[1])}">코스피 ${sg(r[1])}</div>`:""}</div>`;
+    if(one[0]) prev=one[0];
+  });
+  el.innerHTML=`<div class="hint" style="margin-bottom:4px">⏱ 오늘 시장 흐름 (30분마다) — 돈이 어느 테마로 옮겨가는지 · 🔄 빨간 칸 = 1위 테마가 바뀐 때 · 테마를 누르면 상세</div><div class="tl">${h}</div>`;
+  const sc=el.querySelector(".tl"); if(sc) sc.scrollLeft=sc.scrollWidth;   // 최근이 오른쪽 — 열면 최근부터
 }
 function renderGroups(list=DATA.groups,withSolo=true){
   // 11/10: 지금 제일 센 테마가 1·2번째(맨 위 왼쪽·오른쪽), 그다음 순서대로 — 10초 시세마다 다시 줄 세움
@@ -618,7 +658,12 @@ function renderRank(){
 /* ---------- 3. 마켓일정 (3차: 일/주 보기, 날짜 이동) ----------
    DATA.sched = [{d:'YYYYMMDD', label:'11.9(월)', today, ev:[{k, t, s, u, c}]}]  k: theme·item·earn·ipo·lock·pol·ev */
 let schedMode="day", schedCur=null;
-const KNM={theme:"테마",item:"개별",earn:"실적",list:"상장",ipo:"공모",lock:"해제",hol:"휴장",pol:"제도",ev:"행사"};
+const KNM={theme:"테마",item:"개별",earn:"실적",list:"상장",ipo:"공모",lock:"해제",hol:"휴장",pol:"정치경제",pres:"대통령",add:"추가상장",ev:"행사"};
+/* 13차(4강 일정 매매): 종류별로 골라 보기 */
+let schedKind="all";
+const SCHED_F={all:null,theme:["theme"],item:["item","earn"],list:["list"],ipo:["ipo"],lock:["lock"],add:["add"],pres:["pres"],pol:["pol","ev"],hol:["hol"]};
+function setSchedKind(k,btn){schedKind=k;[...$("#schedPills").children].forEach(b=>b.classList.toggle("on",b===btn));renderSched();}
+function schedEv(x){const f=SCHED_F[schedKind];const ev=(x&&x.ev)||[];return f?ev.filter(e=>f.includes(e.k)):ev;}
 function ymd(dt){return dt.getFullYear()+String(dt.getMonth()+1).padStart(2,"0")+String(dt.getDate()).padStart(2,"0");}
 function kstDate(){const p=Object.fromEntries(new Intl.DateTimeFormat("ko-KR",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).map(x=>[x.type,x.value]));return new Date(+p.year,+p.month-1,+p.day);}
 function setSchedMode(m){schedMode=m;$("#segDay").classList.toggle("on",m==="day");$("#segWeek").classList.toggle("on",m==="week");renderSched();}
@@ -632,7 +677,8 @@ function renderSched(){
   if(schedMode==="day"){
     const k=ymd(schedCur), x=byD[k];
     $("#schedRng").textContent=`${schedCur.getFullYear()}.${schedCur.getMonth()+1}.${schedCur.getDate()}`;
-    $("#schedList").innerHTML=(x&&x.ev.length)?x.ev.map(evCard).join(""):`<div class="ev-card" style="color:var(--sub);font-size:13px">이 날 일정이 아직 없어요${LIVE_ON?" (DART 공시·뉴스에서 날짜를 읽어 채워요)":""}</div>`;
+    const evs=schedEv(x);
+    $("#schedList").innerHTML=evs.length?evs.map(evCard).join(""):`<div class="ev-card" style="color:var(--sub);font-size:13px">이 날 ${schedKind==="all"?"":"'"+($("#schedPills .on")||{}).textContent+"' "}일정이 아직 없어요${LIVE_ON?" (DART 공시·뉴스에서 날짜를 읽어 채워요)":""}</div>`;
   }else{
     const s=new Date(schedCur); s.setDate(s.getDate()-((s.getDay()+6)%7)); // 월요일부터
     const e=new Date(s); e.setDate(e.getDate()+6);
@@ -640,7 +686,8 @@ function renderSched(){
     let h="";
     for(let i=0;i<7;i++){const d=new Date(s);d.setDate(d.getDate()+i);const k=ymd(d);const x=byD[k];if(!x&&d.getDay()%6===0)continue;
       const lab=`${d.getMonth()+1}.${d.getDate()}(${"일월화수목금토"[d.getDay()]})`;
-      h+=`<div class="day ${k===today?"today":""}"><h4>${lab}</h4>${x&&x.ev.length?x.ev.map(ev=>`<div class="ev" onclick="schedCur=new Date(${d.getFullYear()},${d.getMonth()},${d.getDate()});setSchedMode('day')"><span class="dot k-${ev.k||"ev"}">${ev.k==="pol"?"N":""}</span><span>${esc(ev.t)}</span></div>`).join(""):'<div class="ev" style="color:var(--sub)">—</div>'}</div>`;}
+      const evs=schedEv(x);
+      h+=`<div class="day ${k===today?"today":""}"><h4>${lab}</h4>${evs.length?evs.map(ev=>`<div class="ev" onclick="schedCur=new Date(${d.getFullYear()},${d.getMonth()},${d.getDate()});setSchedMode('day')"><span class="dot k-${ev.k||"ev"}">${ev.k==="pol"?"N":""}</span><span>${esc(ev.t)}</span></div>`).join(""):'<div class="ev" style="color:var(--sub)">—</div>'}</div>`;}
     $("#schedList").innerHTML=h;
   }
 }
@@ -804,7 +851,7 @@ function renderFz(){
       <td>${tbox(r[13],r[16])}</td>
       <td>${r.length>17?tbox(r[17],r[18]):"—"}</td></tr>`).join("")}
     ${rows.length?"":'<tr><td colspan="6" style="padding:20px;color:var(--sub)">오늘 고가가 +27% 이상인 종목 없음</td></tr>'}</table>
-    <p class="disc" style="padding:6px 8px">SF존 = 오늘 한 번이라도 전일 종가보다 27% 넘게 오른 종목 (상한가 따라잡기용 자리) · <b>SF가</b> = 그날 고가에서 4~5% 내려온 가운데 가격 · <b>F존 B1</b> = 고가에서 8% 내려온 가격 · 주황 상자 = 한 번이라도 닿음 (고가가 더 올라가도 상자는 남음) · 도달 시각은 5분마다 확인한 시각 · 거래대금 순 · 손절 = 고가 −10% 아래 · 10시 전 상한가·14시까지 상한가 못 간 종목은 관망/제외(사유 표시) · 종목 이름 <b class="reg">검정</b> = 정규장 시세, <b class="nxt">적갈색</b> = 넥스트장 시세</p>`;
+    <p class="disc" style="padding:6px 8px">SF존 = 오늘 한 번이라도 전일 종가보다 27% 넘게 오른 종목 (상한가 따라잡기용 자리) · <b>SF가</b> = 그날 고가에서 4~5% 내려온 가운데 가격 · <b>F존 B1</b> = 고가에서 8% 내려온 가격 · 주황 상자 = 한 번이라도 닿음 (고가가 더 올라가도 상자는 남음) · 도달 시각은 5분마다 확인한 시각 · 🔔 SF가·B1 도달은 폰(텔레그램)으로도 알려줘요 · 거래대금 순 · 손절 = 고가 −10% 아래 · 10시 전 상한가·14시까지 상한가 못 간 종목은 관망/제외(사유 표시) · 종목 이름 <b class="reg">검정</b> = 정규장 시세, <b class="nxt">적갈색</b> = 넥스트장 시세</p>`;
   }else if(fzMode==="fzp"){
     const rows=DATA.fz.fzp;
     if(!rows){ el.innerHTML=`<div style="padding:30px 16px;text-align:center;color:var(--sub);font-size:13px">F존+ — 새 수집기가 돌면 채워져요 (오늘 주도주부터 쌓임)</div>`; return; }
@@ -816,7 +863,7 @@ function renderFz(){
       <td style="font-size:11.5px;padding:7px 2px">${flowTxt(r[18])}</td>
       <td>${zoneCell(r[6],r[9],0)}<span class="m">${zoneCell(r[7],r[9],1)}</span></td></tr>`).join("")}
     ${rows.length?"":'<tr><td colspan="6" style="padding:20px;color:var(--sub)">아직 오늘 주도주(시총 1조↑)가 없어요</td></tr>'}</table>
-    <p class="disc" style="padding:6px 8px">F존+ (티마클래스 2강) = 거래대금 25위 &amp; 상승률 100위 (+ 시총 1조↑, 사용자 티마 화면 기준) · NEW = 오늘(다음날부터 매매), 날짜 = 들어온 날 · 5거래일 노출, 종가가 20일선 아래면 삭제 · B1·B2(·B3) = 고점 대비 −8/−10/−12% (고점 갱신 시 바뀜) · 손절 = 고점 −14% 이탈 · 매도 = 저점 대비 +4% 반등 · 프로그램 = 오늘 프로그램 순매수 · 주황 테두리 = 현재가가 들어온 자리</p>`;
+    <p class="disc" style="padding:6px 8px">F존+ (티마클래스 2강) = 거래대금 25위 &amp; 상승률 100위 (+ 시총 1조↑, 사용자 티마 화면 기준) · NEW = 오늘(다음날부터 매매), 날짜 = 들어온 날 · 5거래일 노출, 종가가 20일선 아래면 삭제 · B1·B2(·B3) = 고점 대비 −8/−10/−12% (고점 갱신 시 바뀜) · 손절 = 고점 −14% 이탈 · 매도 = 저점 대비 +4% 반등 · 프로그램 = 오늘 프로그램 순매수 · 주황 테두리 = 현재가가 들어온 자리 · 🔔 B1·B2·B3 도달과 −14% 이탈은 폰(텔레그램)으로도 알려줘요</p>`;
   }else if(fzMode==="fplus"){
     const rows=DATA.fz.fplus||[];
     el.innerHTML=`<table><tr><th>종목명</th><th>현재가</th><th>B1<br>B2</th><th>B3<br><span class="sub">손절선</span></th><th>바닥<br><span class="sub">목표 +4%</span></th></tr>
