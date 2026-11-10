@@ -679,14 +679,14 @@ function renderFz(){
     const rows=DATA.fz.fzp;
     if(!rows){ el.innerHTML=`<div style="padding:30px 16px;text-align:center;color:var(--sub);font-size:13px">F존+ — 새 수집기가 돌면 채워져요 (오늘 주도주부터 쌓임)</div>`; return; }
     el.innerHTML=`<table><tr><th>종목명</th><th>시총<br><span class="sub">(조)</span></th><th>현재가</th><th>대금<br><span class="sub">(억)</span></th><th>프로그램<br><span class="sub">순매수(억)</span></th><th>B1<br>B2</th></tr>
-    ${rows.map(r=>`<tr class="clk" onclick="openStock('${r[11]||""}','${jsq(r[0])}')"><td class="nm"><span class="flag"></span>${r[0]}<span class="${r[1]==="NEW"?"newb":"dt"}">${r[1]}</span>${r[17]?`<span class="dt"><b>${r[17]}</b></span>`:""}</td>
+    ${rows.map(r=>`<tr class="clk" onclick="openStock('${r[11]||""}','${jsq(r[0])}')"><td class="nm"><span class="flag"></span>${r[0]}<span class="${r[1]==="NEW"?"newb":"dt"}">${r[1]}</span>${r[18]?`<span class="tagn">20봉 신고가</span>`:""}${r[17]?`<span class="dt"><b>${r[17]}</b></span>`:""}</td>
       <td style="font-size:11.5px;padding:7px 2px">${r[2]}</td>
       <td style="padding:7px 2px"><span class="big ${cls(r[4])}">${f(r[3])}</span><span class="m ${cls(r[4])}">${r[4]>=29.5?"↑":""}${Number(r[4]).toFixed(2)}%</span></td>
       <td style="font-size:11.5px;padding:7px 2px">${String(r[5]).replace("≈","")}</td>
       <td style="font-size:11.5px;padding:7px 2px">${flowTxt(r[18])}</td>
       <td>${zoneCell(r[6],r[9],0)}<span class="m">${zoneCell(r[7],r[9],1)}</span></td></tr>`).join("")}
     ${rows.length?"":'<tr><td colspan="6" style="padding:20px;color:var(--sub)">아직 오늘 주도주(시총 1조↑)가 없어요</td></tr>'}</table>
-    <p class="disc" style="padding:6px 8px">F존+ (티마와 같은 기준) = 당일주도주(거래대금 상위 35 + 양봉 + 상승률 상위 100) 중 시총 1조 이상 · NEW = 오늘 주도주, 날짜 = 주도주가 된 날(그 뒤 3거래일까지 보여줌) · 프로그램 = 오늘 프로그램 순매수 금액(억, 빨강 순매수·파랑 순매도, 5분마다) · B1·B2 = 주도주가 된 뒤 최고 고점 대비 −8%·−10% (B3 −12% 는 종목 화면 차트) · 주황 테두리 = 현재가가 들어온 자리</p>`;
+    <p class="disc" style="padding:6px 8px">F존+ (티마클래스 2강 기준) = 거래대금 25위 & 상승률 100위 (+ 시총 1조↑, 사용자 티마 화면 기준) · NEW = 오늘 주도주, 날짜 = 주도주가 된 날(그 뒤 3거래일까지 보여줌) · 프로그램 = 오늘 프로그램 순매수 금액(억, 빨강 순매수·파랑 순매도, 5분마다) · B1·B2(·B3) = 고점 대비 −8/−10/−12% (고점 갱신 시 바뀜) · 손절 = 고점 −14% 이탈 · 매도 = 저점 대비 +4% 반등 · 5거래일 노출, 종가가 20일선 아래면 삭제 · NEW 는 다음날부터 매매 · 주황 테두리 = 현재가가 들어온 자리</p>`;
   }else if(fzMode==="fplus"){
     const rows=DATA.fz.fplus||[];
     el.innerHTML=`<table><tr><th>종목명</th><th>현재가</th><th>B1<br>B2</th><th>B3<br><span class="sub">손절선</span></th><th>바닥<br><span class="sub">목표 +4%</span></th></tr>
@@ -699,18 +699,28 @@ function renderFz(){
     <p class="disc" style="padding:6px 8px">대상 = 상한가 다음날~D+2(강한 3일) · B1·B2·B3 = 그날 고점 대비 −8/−10/−12% (1차·2차·3차 매수 지점) · 10시까지는 B1부터, 오후는 B2부터 · 10시 이후 물타기 금지 · 목표 = 바닥(오늘 저가) 대비 +4% 반등(내 평단 +4% 아님) · 정석 손절 B3 이탈(유도리 B2)</p>`;
   }else if(fzMode==="catch"){
     const rows=DATA.fz.catch;
-    if(!rows){ el.innerHTML=`<div style="padding:30px 16px;text-align:center;color:var(--sub);font-size:13px">F존포착 — 다음 수집(새 수집기) 때부터 채워져요</div>`; return; }
-    el.innerHTML=`<table><tr><th>종목명</th><th>현재가</th><th>매수 자리</th><th>남은 %</th><th>손절선</th></tr>
-    ${rows.map(r=>`<tr class="clk" onclick="openStock('${r[8]||""}','${jsq(r[1])}')"><td class="nm"><span class="tagn">${r[0]}</span> ${r[1]}<span class="dt">${r[7]}</span></td>
-      <td><span class="big ${cls(r[3])}">${f(r[2])}</span><span class="m">${pctCell(r[3])}</span></td>
-      <td><span class="${r[5]<=0?"box":""}">${f(r[4])}</span></td>
-      <td>${r[5]<=0?'<b class="up">진입</b>':"−"+Number(r[5]).toFixed(1)+"%"}</td>
-      <td class="dn">${f(r[6])}</td></tr>`).join("")}
-    ${rows.length?"":'<tr><td colspan="5" style="padding:20px;color:var(--sub)">지금 SF존·F존 자리에 다가오는 종목 없음</td></tr>'}</table>
-    <p class="disc" style="padding:6px 8px">SF존·F존 종목 중 매수 자리에 들어왔거나 다가오는 종목을 남은 % 작은 순으로 · 남은 % = 현재가에서 다음 매수 자리(SF존 S1 / F존 10시 전 B1·오후 B2)까지 · 제외 사유 종목·손절선 아래 종목은 뺌</p>`;
+    if(!rows||(rows.length&&typeof rows[0][1]==="string"&&rows[0][0]==="SF존")){ el.innerHTML=`<div style="padding:30px 16px;text-align:center;color:var(--sub);font-size:13px">F존포착 — 새 수집기가 돌면 채워져요</div>`; return; }
+    el.innerHTML=`<table><tr><th>종목명</th><th>현재가</th><th>시총<br><span class="sub">대금(억)</span></th><th>목표가<br><span class="sub">B1</span></th><th>B2<br>B3</th></tr>
+    ${rows.map(r=>`<tr class="clk" onclick="openStock('${r[10]||""}','${jsq(r[0])}')"><td class="nm"><span class="flag"></span>${r[0]}<span class="${/B\d/.test(r[1])?"newb":"tagn"}">${r[1]}</span><span class="dt">${r[13]} · 고점 ${Number(r[12]).toFixed(1)}%</span></td>
+      <td><span class="big ${cls(r[3])}">${f(r[2])}</span><span class="m ${cls(r[3])}">${Number(r[3]).toFixed(2)}%</span></td>
+      <td>${r[4]}조<span class="m sub">${String(r[5]).replace("≈","")}</span></td>
+      <td><span class="up">${r[6]!=null?f(r[6]):"—"}</span><span class="m">${zoneCell(r[7],r[11],0)}</span></td>
+      <td>${zoneCell(r[8],r[11],1)}<span class="m">${zoneCell(r[9],r[11],2)}</span></td></tr>`).join("")}
+    ${rows.length?"":'<tr><td colspan="5" style="padding:20px;color:var(--sub)">고점 대비 −6% 아래로 내려온 F존+ 종목이 없어요</td></tr>'}</table>
+    <p class="disc" style="padding:6px 8px">F존+ 종목 중 F존에 가까워진 종목 (08:00~20:00) · F존임박 = 고점 −6~−8% · B1 −8~−10% · B2 −10~−12% · B3 −12~−14% · B1 에 닿으면 −14%(손절)까지 계속 보여주고 −14% 이탈하면 삭제 · 목표가 = 저점 대비 +4% 반등</p>`;
   }else{
-    const label={gold:"골드존",swing38:"38스윙"}[fzMode];
-    el.innerHTML=`<div style="padding:30px 16px;text-align:center;color:var(--sub);font-size:13px">${label} — 공식을 주시면 연결할 자리</div>`;
+    const isG=fzMode==="gold", rows=DATA.fz[fzMode], Z=isG?["G1","G2","G3"]:["J1","J2","J3"];
+    if(!rows){ el.innerHTML=`<div style="padding:30px 16px;text-align:center;color:var(--sub);font-size:13px">${isG?"골드존":"38스윙"} — 새 수집기가 장 마감 뒤(15:30~20:00) 기준봉을 기록하면 채워져요</div>`; return; }
+    const zc=(v,t)=>`<span class="${t?"box":""}">${f(v)}</span>${t?`<span class="m sub">(${t})</span>`:""}`;
+    el.innerHTML=`<table><tr><th>종목명</th><th>현재가</th><th>대금(억)<br><span class="sub">시총(조)</span></th><th>${Z[0]}</th><th>${Z[1]}</th><th>${Z[2]}</th></tr>
+    ${rows.map(r=>`<tr class="clk" onclick="openStock('${r[10]||""}','${jsq(r[0])}')"><td class="nm"><span class="flag"></span>${r[0]}<span class="${r[1]==="NEW"?"newb":"dt"}">${r[1]}</span></td>
+      <td><span class="big ${cls(r[4])}">${f(r[3])}</span><span class="m ${cls(r[4])}">${Number(r[4]).toFixed(2)}%</span></td>
+      <td>${String(r[5]).replace("≈","")}<span class="m sub">${r[2]}</span></td>
+      <td>${zc(r[6],r[9][0])}</td><td>${zc(r[7],r[9][1])}</td><td>${zc(r[8],r[9][2])}</td></tr>`).join("")}
+    ${rows.length?"":`<tr><td colspan="6" style="padding:20px;color:var(--sub)">지금 ${isG?"골드존":"38스윙"} 종목이 없어요</td></tr>`}</table>
+    <p class="disc" style="padding:6px 8px">${isG
+      ?"골드존 기준봉 = 20:00 종가 기준 거래대금 35위 + 20일 최고종가 + 전일대비 13%↑ + 시가 대비 종가 9%↑(윗꼬리 짧은 장대양봉) · G1/G2/G3 = 기준봉 −3/−6/−9% · NEW 다음날부터 3거래일 · 3거래일 안 새 기준봉은 가격 안 바뀜 · 매도: 3~4% 구간 절반~¾ 익절, 손절 = G3(두 번 매수 G2+G3 이면 G3 −3%) · 상자 = 터치한 날"
+      :"38스윙 = 20:00 기준 상한가 마감 + 거래대금 500억↑ · J1/J2/J3 = 상한가봉 −4/−11/−15% · NEW 다음날부터 5거래일(6일차 삭제) · 5일 안 재상한가면 가격 갱신 · 매도: 3~4% 구간 절반~¾ 익절, 손절 = J3(J2+J3 매수면 J3 −2%) · 상자 = 터치한 날"}</p>`;
   }
 }
 
@@ -1017,7 +1027,7 @@ function openStock(code,name){
 }
 function fzOf(code){ // 이 종목의 F존·SF존 선 (수집기 값이 있으면 그걸, 없으면 그날 고가로 계산)
   const d=(DATA.stk||{})[code]||{};
-  const sf=(DATA.fz.sf||[]).find(r=>r[12]===code), fp=(DATA.fz.fplus||[]).find(r=>r[11]===code);
+  const sf=(DATA.fz.sf||[]).find(r=>r[12]===code), fp=(DATA.fz.fzp||[]).find(r=>r[11]===code)||(DATA.fz.fplus||[]).find(r=>r[11]===code);
   const lines=[];
   if(fp){lines.push({tag:"B1",v:fp[6],col:"#1fa04a"},{tag:"B2",v:fp[7],col:"#2b5fd9"},{tag:"B3",v:fp[8],col:"#7b3fe4"});}
   else if(d.h){lines.push({tag:"B1",v:tickRound(d.h*.92),col:"#1fa04a"},{tag:"B2",v:tickRound(d.h*.90),col:"#2b5fd9"},{tag:"B3",v:tickRound(d.h*.88),col:"#7b3fe4"});}
