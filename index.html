@@ -96,6 +96,11 @@ canvas.kc.sm{height:150px}
 .panel.on{display:block}
 .panel h5{font-size:13px;font-weight:500;font-style:italic;color:#444}
 .panel h6{font-size:15px;font-weight:700;margin:10px 0 8px}
+.panel .card{background:#f7f9fb;border-radius:10px;padding:8px 8px 6px;border:1px solid #e7ecf1}
+.panel .card h6{font-size:13px;margin:0 0 6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.panel .card h6 .sub{font-weight:400;font-size:11px}
+.panel .no{font-size:12px;color:var(--sub);padding:6px 4px}
+.panel .wrap{box-shadow:none;border:1px solid #e7ecf1}
 .panel p{margin-bottom:12px}
 .panel input{width:100%;border:1.5px solid #c7d1dc;border-radius:8px;padding:8px;font-size:12px;font-family:inherit;margin:6px 0}
 .panel button{font-family:inherit;border:0;background:var(--brand);color:#fff;border-radius:8px;padding:7px 12px;font-weight:700;cursor:pointer}
@@ -404,7 +409,8 @@ const SAMPLE = {
     "1. 반도체주 약세 출발 뒤 외국인 매도 주춤·기관 매수로 코스피 5000p 지지, 삼성전자·SK하이닉스 반등.",
     "2. 코스닥은 알테오젠 반등과 반도체소부장 강세로 상승. 한진그룹 3종목 상한가.",
     "3. 오늘밤 엔비디아 뉴스가 미장 반도체주에 주는 영향 체크."]}],
-  cal:[["11/3","한진그룹"],["11/4","재생에너지·2차전지"],["11/5","바이오"],["11/6","데이터센터"],["11/9","한진그룹"]],
+  cal:[["11/3","한진그룹"],["11/4","재생에너지·2차전지"],["11/5","바이오"],["11/6","데이터센터"],["11/9","한진그룹",[{name:"한진그룹",rate:8.2,amt:"2,310억",items:[["267850","아시아나IDT",14130,3260,29.99,653,-120.5,80.2,41.3,12.1],["003490","대한항공",28900,1150,4.14,1210,-210.4,150.7,55.0,33.8]]}]]],
+  flow:{"267850":{n:"아시아나IDT",at:"15:30",d:[["20261109",-120.5,80.2,41.3,12.1,14130,29.99],["20261106",-15.2,10.1,5.0,0.8,10870,3.1]]}},
   stk:{"267850":{n:"아시아나IDT",m:"코스피",up:"IT 서비스",p:14130,r:29.99,chg:3260,amt:"653억",vol:4620000,cap:1568,dstr:23.77,o:11000,h:14130,l:10870,upl:14130,h250:14130,l250:6800,per:12.1,pbr:1.4,frg:1.2,up1:1,up2:0,
     th:[{n:"한진그룹",pct:8.2,lead:1},{n:"항공사",pct:3.1},{n:"아시아나그룹",pct:5.5}],issue:[{g:"한진그룹",news:"'조원태 vs 호반' 지분 경쟁 격화"}],
     news:[{t:"'조원태 vs 호반' 지분 경쟁에 상한가",p:"한국경제",u:"#",d:"11/09 11:50"}],dart:[]}}
@@ -420,6 +426,7 @@ const SAMPLE_CHARTS={
 let DATA = JSON.parse(JSON.stringify(SAMPLE));
 let CHARTS = {m15:{},d:{},idx:{}};        // 받은 차트 (문자열 또는 배열)
 let LIVE_ON = false;
+let QT="",QBUSY=false;        // 10초 시세 (pollQuotes) — 선언을 여기 둬야 PC 파일에서 loadLive 가 먼저 돌아도 안전
 let LOADING = true, PENDING = null;
 
 /* ---------- helpers ---------- */
@@ -453,6 +460,7 @@ function applyLive(d){
   DATA.rank = d.rank;
   if(d.fz) DATA.fz = d.fz;
   if(d.cal&&d.cal.length) DATA.cal = d.cal;
+  DATA.flow = d.flow||{};        // 5차: 종목별 수급·프로그램 순매수(억) {code:{n,d:[[날짜,개인,외국인,기관,프로그램,종가,등락률]…],at}}
   DATA.notes = d.notes||[];
   if(d.stocks&&d.stocks.length) setStocks(d.stocks,d.ups);
   DATA.stk = d.stk||{};
@@ -608,14 +616,15 @@ function renderFz(){
   }else if(fzMode==="fzp"){
     const rows=DATA.fz.fzp;
     if(!rows){ el.innerHTML=`<div style="padding:30px 16px;text-align:center;color:var(--sub);font-size:13px">F존+ — 새 수집기가 돌면 채워져요 (오늘 주도주부터 쌓임)</div>`; return; }
-    el.innerHTML=`<table><tr><th>종목명</th><th>시총<br><span class="sub">(조)</span></th><th>현재가</th><th>대금<br><span class="sub">(억)</span></th><th>B1<br>B2</th></tr>
+    el.innerHTML=`<table><tr><th>종목명</th><th>시총<br><span class="sub">(조)</span></th><th>현재가</th><th>대금<br><span class="sub">(억)</span></th><th>프로그램<br><span class="sub">순매수(억)</span></th><th>B1<br>B2</th></tr>
     ${rows.map(r=>`<tr class="clk" onclick="openStock('${r[11]||""}','${jsq(r[0])}')"><td class="nm"><span class="flag"></span>${r[0]}<span class="${r[1]==="NEW"?"newb":"dt"}">${r[1]}</span>${r[17]?`<span class="dt"><b>${r[17]}</b></span>`:""}</td>
-      <td>${r[2]}</td>
-      <td><span class="big ${cls(r[4])}">${f(r[3])}</span><span class="m ${cls(r[4])}">${r[4]>=29.5?"↑":""}${Number(r[4]).toFixed(2)}%</span></td>
-      <td>${String(r[5]).replace("≈","")}</td>
+      <td style="font-size:11.5px;padding:7px 2px">${r[2]}</td>
+      <td style="padding:7px 2px"><span class="big ${cls(r[4])}">${f(r[3])}</span><span class="m ${cls(r[4])}">${r[4]>=29.5?"↑":""}${Number(r[4]).toFixed(2)}%</span></td>
+      <td style="font-size:11.5px;padding:7px 2px">${String(r[5]).replace("≈","")}</td>
+      <td style="font-size:11.5px;padding:7px 2px">${flowTxt(r[18])}</td>
       <td>${zoneCell(r[6],r[9],0)}<span class="m">${zoneCell(r[7],r[9],1)}</span></td></tr>`).join("")}
-    ${rows.length?"":'<tr><td colspan="5" style="padding:20px;color:var(--sub)">아직 오늘 주도주(시총 1조↑)가 없어요</td></tr>'}</table>
-    <p class="disc" style="padding:6px 8px">F존+ (티마와 같은 기준) = 당일주도주(거래대금 상위 35 + 양봉 + 상승률 상위 100) 중 시총 1조 이상 · NEW = 오늘 주도주, 날짜 = 주도주가 된 날(그 뒤 3거래일까지 보여줌) · B1·B2 = 주도주가 된 뒤 최고 고점 대비 −8%·−10% (B3 −12% 는 종목 화면 차트) · 주황 테두리 = 현재가가 들어온 자리</p>`;
+    ${rows.length?"":'<tr><td colspan="6" style="padding:20px;color:var(--sub)">아직 오늘 주도주(시총 1조↑)가 없어요</td></tr>'}</table>
+    <p class="disc" style="padding:6px 8px">F존+ (티마와 같은 기준) = 당일주도주(거래대금 상위 35 + 양봉 + 상승률 상위 100) 중 시총 1조 이상 · NEW = 오늘 주도주, 날짜 = 주도주가 된 날(그 뒤 3거래일까지 보여줌) · 프로그램 = 오늘 프로그램 순매수 금액(억, 빨강 순매수·파랑 순매도, 5분마다) · B1·B2 = 주도주가 된 뒤 최고 고점 대비 −8%·−10% (B3 −12% 는 종목 화면 차트) · 주황 테두리 = 현재가가 들어온 자리</p>`;
   }else if(fzMode==="fplus"){
     const rows=DATA.fz.fplus||[];
     el.innerHTML=`<table><tr><th>종목명</th><th>현재가</th><th>B1<br>B2</th><th>B3<br><span class="sub">손절선</span></th><th>바닥<br><span class="sub">목표 +4%</span></th></tr>
@@ -798,7 +807,28 @@ function renderMemo(){
     +(list.length?"":'<p class="sub">아직 오늘 메모가 없어요 — 장전 08:30부터 수집기가 채워요</p>')
     +(LIVE_ON?'<p class="sub" style="margin-top:6px">네이버 뉴스 제목을 주도 테마·상한가 종목·지수 키워드로 골라 번호로 보여줘요 (AI 요약 아님). 제목을 누르면 원문</p>':"");
 }
-function renderCal(){$("#calBody").innerHTML=`<table style="font-size:12px"><tr><th>날짜</th><th>주도 테마</th></tr>${[...DATA.cal].reverse().map(c=>`<tr><td>${c[0]}</td><td class="nm" style="max-width:none">${c[1]}</td></tr>`).join("")}</table>`;}
+/* 5차(11/10): 일별 주도 테마 = 날마다 마켓중심 1위 테마를 남긴 기록. 날짜를 누르면 그날 1~3위 테마 + 소속 종목 + 수급(외국인·기관·개인·프로그램 순매수, 억) */
+let CAL_OPEN=null;
+function flowTxt(v){ if(v==null||v==="") return '<span class="sub">—</span>'; const n=Number(v); return `<b class="${n>0?"up":n<0?"dn":""}">${n>0?"+":""}${n.toLocaleString("ko-KR",{maximumFractionDigits:1})}</b>`; }
+function renderCal(){
+  const cal=[...(DATA.cal||[])].reverse();
+  let h=`<p class="disc" style="padding:2px 0 8px">그날 마켓중심에서 가장 센 테마(1위)를 날마다 남긴 기록이에요. 날짜 줄을 누르면 그날 1~3위 테마와 소속 종목, 수급(외국인·기관·개인·프로그램 순매수)이 펼쳐지고, 종목을 누르면 종목 정보로 가요.</p>`;
+  h+=`<table style="font-size:12px"><tr><th style="width:48px">날짜</th><th style="text-align:left">주도 테마 (1위 · 2위 · 3위)</th><th style="width:24px"></th></tr>`;
+  if(!cal.length) h+=`<tr><td colspan="3" style="padding:16px;color:var(--sub)">아직 기록이 없어요 — 수집기가 매일 쌓아요</td></tr>`;
+  cal.forEach(c=>{
+    const det=c[2]&&c[2].length?c[2]:null, open=CAL_OPEN===c[0];
+    h+=`<tr class="clk" onclick="CAL_OPEN=CAL_OPEN==='${c[0]}'?null:'${c[0]}';renderCal()"><td>${c[0]}</td><td class="nm" style="max-width:none;text-align:left"><b>${esc(c[1])}</b>${det&&det.length>1?`<span class="sub" style="font-weight:400"> · ${det.slice(1).map(t=>esc(t.name)).join(" · ")}</span>`:""}</td><td class="sub">${open?"▲":"▼"}</td></tr>`;
+    if(open) h+=`<tr><td colspan="3" style="padding:2px 0 10px;text-align:left">${det?calDetail(det):'<div class="no">이 날은 테마 이름만 남아 있어요 (종목·수급은 11/10 새 수집기부터 쌓여요)</div>'}</td></tr>`;
+  });
+  h+=`</table>`;
+  $("#calBody").innerHTML=h;
+}
+function calDetail(det){
+  return det.map((t,k)=>`<div class="card" style="margin:6px 0"><h6>${k+1}위 <span class="clk" style="text-decoration:underline" onclick="openTheme('${jsq(t.name)}')">${esc(t.name)}</span> ${t.rate!=null?`<b class="${cls(t.rate)}">${sg(t.rate)}</b>`:""} <span class="sub">${esc(t.amt||"")}</span></h6>
+    <div class="wrap"><table class="tt" style="font-size:11px"><tr><th style="text-align:left;padding-left:6px">종목</th><th>대금(억)</th><th>외국인</th><th>기관</th><th>개인</th><th>프로그램</th></tr>
+    ${(t.items||[]).map(r=>`<tr class="clk ${r[4]>=29.5?"hit":""}" onclick="openStock('${r[0]||""}','${jsq(r[1])}')"><td class="nm" style="padding-left:6px">${esc(r[1])}<span class="${cls(r[4])}" style="display:block;font-size:10.5px">${f(r[2])} ${r[4]!=null?sg(r[4]):""}</span></td><td>${r[5]==null?"—":f(r[5])}</td><td>${flowTxt(r[7])}</td><td>${flowTxt(r[8])}</td><td>${flowTxt(r[6])}</td><td>${flowTxt(r[9])}</td></tr>`).join("")}</table></div></div>`).join("")
+  +`<p class="disc">수급 = 순매수 금액(억) · 빨강 순매수 · 파랑 순매도 · 지난 날짜는 그날 마지막 수집값, 오늘은 장중 잠정치(5분마다) · 종목 8개 = 그 테마에서 그날 등락률 높은 순</p>`;
+}
 function renderBars(){
   const T=DATA.ticker,I=DATA.index,k=I.kospi||{},q=I.kosdaq||{};
   $("#ticker").innerHTML=`<span class="t">${T.time}</span>[<span class="tag">${T.tag}</span>] ${T.text}`;
@@ -958,6 +988,8 @@ function renderStock(){
     const cnt=(a,b)=>a==null&&b==null?"—":`<b style="color:var(--up)">${b==null?"—":b}</b>회 <span class="sub">(1년 ${a==null?"—":a}회)</span>`;
     h+=`<div class="stat3"><div>시가총액<b>${capTxt(d.cap)}</b></div><div>유통비율<b>${d.dstr!=null?d.dstr+"%":"—"}</b></div><div class="hot">2년내 상한가<b>${cnt(d.up1,d.up2)}</b></div></div>`;
     h+=`<div class="card"><h6>관련테마 <span class="sub">빨간 테두리 = 오늘 마켓중심 테마 · 누르면 테마 상세</span></h6><div class="chips">${(d.th||[]).map(t=>`<span class="chip ${t.lead?"lead":""}" onclick="openTheme('${jsq(t.n)}')">${esc(t.n)}${t.pct!=null?` <b class="${cls(t.pct)}">${sg(t.pct)}</b>`:""}</span>`).join("")||'<span class="sub">키움에 등록된 테마 없음 (또는 다음 수집 때 채워짐)</span>'}</div></div>`;
+    const fl=(DATA.flow||{})[code];
+    if(fl&&fl.d&&fl.d.length) h+=`<div class="card"><h6>수급 · 순매수(억) <span class="sub">${fl.at?fl.at+" 기준":""} · 오늘은 잠정치 · 빨강 순매수 파랑 순매도</span></h6><div class="wrap"><table class="tt" style="font-size:11.5px"><tr><th>날짜</th><th>외국인</th><th>기관</th><th>개인</th><th>프로그램</th><th>종가</th></tr>${fl.d.map(r=>`<tr><td>${String(r[0]).slice(4,6)}/${String(r[0]).slice(6)}</td><td>${flowTxt(r[2])}</td><td>${flowTxt(r[3])}</td><td>${flowTxt(r[1])}</td><td>${flowTxt(r[4])}</td><td class="${cls(r[6])}">${r[5]?f(r[5]):"—"}<span class="sub" style="display:block;font-size:10px">${r[6]!=null?sg(r[6]):""}</span></td></tr>`).join("")}</table></div></div>`;
     h+=`<div class="card"><div class="kv" style="margin-top:0">
         <div><span>거래량</span><b>${won(d.vol)}</b></div><div><span>상장주식</span><b>${d.flo?won(d.flo)+"천주":"—"}</b></div>
         <div><span>시가</span><b>${won(d.o)}</b></div><div><span>고가</span><b class="up">${won(d.h)}</b></div>
@@ -1130,7 +1162,7 @@ if(TABS.includes(location.hash.slice(1)))route();else{try{const t=localStorage.g
 loadLive(false);
 setInterval(()=>loadLive(false), 5*60*1000);
 /* ---------- 4차: 10초 시세 — PC 가 10초마다 올린 화면 종목 현재가만 받아 숫자 바꿔 끼움 ---------- */
-let QT="",QBUSY=false;
+/* QT·QBUSY 선언은 위(LIVE_ON 옆)로 옮김 — PC 파일(LIVE 내장)에서 loadLive 가 선언보다 먼저 돌아 "Cannot access QT" 오류 나던 것 고침 (11/10) */
 async function pollQuotes(){
   if(QBUSY||document.hidden||!LIVE_ON) return;
   const u=DATA.want_url||feedUrl(); if(!u) return;
