@@ -725,7 +725,8 @@ function renderFz(){
     <p class="disc" style="padding:6px 8px">대상 = 상한가 다음날~D+2(강한 3일) · B1·B2·B3 = 그날 고점 대비 −8/−10/−12% (1차·2차·3차 매수 지점) · 10시까지는 B1부터, 오후는 B2부터 · 10시 이후 물타기 금지 · 목표 = 바닥(오늘 저가) 대비 +4% 반등(내 평단 +4% 아님) · 정석 손절 B3 이탈(유도리 B2)</p>`;
   }else if(fzMode==="catch"){
     const rows=DATA.fz.catch;
-    if(!rows||(rows.length&&typeof rows[0][1]==="string"&&rows[0][0]==="SF존")){ el.innerHTML=`<div style="padding:30px 16px;text-align:center;color:var(--sub);font-size:13px">F존포착 — 새 수집기가 돌면 채워져요</div>`; return; }
+    if(!rows||(rows.length&&rows[0].length!==14)){   // 예전 수집기 형식이면 새 수집기 기다림
+     el.innerHTML=`<div style="padding:30px 16px;text-align:center;color:var(--sub);font-size:13px">F존포착 — 새 수집기가 돌면 채워져요</div>`; return; }
     el.innerHTML=`<table><tr><th>종목명</th><th>현재가</th><th>시총<br><span class="sub">대금(억)</span></th><th>목표가<br><span class="sub">B1</span></th><th>B2<br>B3</th></tr>
     ${rows.map(r=>`<tr class="clk" onclick="openStock('${r[10]||""}','${jsq(r[0])}')"><td class="nm"><span class="flag"></span>${r[0]}<span class="${/B\d/.test(r[1])?"newb":"tagn"}">${r[1]}</span><span class="dt">${r[13]} · 고점 ${Number(r[12]).toFixed(1)}%</span></td>
       <td><span class="big ${cls(r[3])}">${f(r[2])}</span><span class="m ${cls(r[3])}">${Number(r[3]).toFixed(2)}%</span></td>
