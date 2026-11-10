@@ -204,6 +204,7 @@ main{min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .cdl i{position:absolute}.cdl .m{left:50%;top:-2px;width:2px;height:12px;background:#111;margin-left:-1px}
 .cdl .w{top:3px;height:2px}.cdl .b{top:0;height:8px;border-radius:1px}
 .s .r2 b.up{color:var(--up)}.s .r2 b.dn{color:var(--dn)}
+.fz td.nm .newb{display:inline-block;background:#ff3b6b;color:#fff;font-size:9.5px;font-weight:700;border-radius:4px;padding:0 5px;margin-top:2px}
 </style>
 </head>
 <body>
@@ -253,9 +254,10 @@ main{min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 
   <section class="view" id="v-fzone">
     <div class="pills sm" id="fzPills">
-      <button class="on" onclick="setFz('sf',this)">SF존</button>
-      <button onclick="setFz('fplus',this)">F존</button>
       <button onclick="setFz('catch',this)">F존포착</button>
+      <button class="on" onclick="setFz('fzp',this)">F존+</button>
+      <button onclick="setFz('sf',this)">SF존</button>
+      <button onclick="setFz('fplus',this)">상한가F존</button>
       <button onclick="setFz('gold',this)">골드존</button>
       <button onclick="setFz('swing38',this)">38스윙</button>
     </div>
@@ -586,7 +588,7 @@ function renderSched(){
 }
 
 /* ---------- 4. F존 ---------- */
-let fzMode="sf";
+let fzMode="fzp";   // 11/10 티마처럼 F존+ 가 첫 화면
 function setFz(m,btn){fzMode=m;[...$("#fzPills").children].forEach(b=>b.classList.toggle("on",b===btn));renderFz();}
 function zoneCell(v,hit,idx){ return `<span class="${hit===idx?"box":""}">${f(v)}</span>`; }
 function gapTxt(g,hit){ return (hit>=0||g==null)?"":`<span class="m sub">${g<=0?"진입":"−"+Number(g).toFixed(1)+"%"}</span>`; }
@@ -603,6 +605,17 @@ function renderFz(){
       <td>${r[13]!=null?`<span class="big">${f(r[13])}</span>`:""}<span class="m dn">${f(r[9])}</span></td></tr>`).join("")}
     ${rows.length?"":'<tr><td colspan="6" style="padding:20px;color:var(--sub)">오늘 고가가 +27% 이상인 종목 없음</td></tr>'}</table>
     <p class="disc" style="padding:6px 8px">대상 = 그날 고가가 전일 종가 +27% 이상 · S1·S2 = 그날 고가 대비 −4%·−5% · SF가 = (S1+S2)/2 · 손절 = −10%(F존 B2) 이탈 · 주황 테두리 = 현재가가 들어온 자리, 회색 −% = S1까지 남은 거리. 10시 전 상한가·14시까지 상한가 못 간 종목은 제외(사유 표시)</p>`;
+  }else if(fzMode==="fzp"){
+    const rows=DATA.fz.fzp;
+    if(!rows){ el.innerHTML=`<div style="padding:30px 16px;text-align:center;color:var(--sub);font-size:13px">F존+ — 새 수집기가 돌면 채워져요 (오늘 주도주부터 쌓임)</div>`; return; }
+    el.innerHTML=`<table><tr><th>종목명</th><th>시총<br><span class="sub">(조)</span></th><th>현재가</th><th>대금<br><span class="sub">(억)</span></th><th>B1<br>B2</th></tr>
+    ${rows.map(r=>`<tr class="clk" onclick="openStock('${r[11]||""}','${jsq(r[0])}')"><td class="nm"><span class="flag"></span>${r[0]}<span class="${r[1]==="NEW"?"newb":"dt"}">${r[1]}</span>${r[17]?`<span class="dt"><b>${r[17]}</b></span>`:""}</td>
+      <td>${r[2]}</td>
+      <td><span class="big ${cls(r[4])}">${f(r[3])}</span><span class="m ${cls(r[4])}">${r[4]>=29.5?"↑":""}${Number(r[4]).toFixed(2)}%</span></td>
+      <td>${String(r[5]).replace("≈","")}</td>
+      <td>${zoneCell(r[6],r[9],0)}<span class="m">${zoneCell(r[7],r[9],1)}</span></td></tr>`).join("")}
+    ${rows.length?"":'<tr><td colspan="5" style="padding:20px;color:var(--sub)">아직 오늘 주도주(시총 1조↑)가 없어요</td></tr>'}</table>
+    <p class="disc" style="padding:6px 8px">F존+ (티마와 같은 기준) = 당일주도주(거래대금 상위 35 + 양봉 + 상승률 상위 100) 중 시총 1조 이상 · NEW = 오늘 주도주, 날짜 = 주도주가 된 날(그 뒤 3거래일까지 보여줌) · B1·B2 = 주도주가 된 뒤 최고 고점 대비 −8%·−10% (B3 −12% 는 종목 화면 차트) · 주황 테두리 = 현재가가 들어온 자리</p>`;
   }else if(fzMode==="fplus"){
     const rows=DATA.fz.fplus||[];
     el.innerHTML=`<table><tr><th>종목명</th><th>현재가</th><th>B1<br>B2</th><th>B3<br><span class="sub">손절선</span></th><th>바닥<br><span class="sub">목표 +4%</span></th></tr>
