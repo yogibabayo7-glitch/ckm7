@@ -184,6 +184,7 @@ tr.clk:hover td{background:#f7fbfd}
 .ev-card .lk{width:26px;height:26px;border-radius:50%;border:1.5px solid #c7d1dc;display:grid;place-items:center;color:var(--brand);text-decoration:none;font-size:13px;flex:none}
 .bdg{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:700}
 .k-theme{background:var(--up)}.k-item{background:#f08a1d}.k-earn{background:#f08a1d}.k-ipo{background:#9b59f5}.k-lock{background:#1e9be0}.k-pol{background:#1a4fd8}.k-ev{background:var(--up)}
+.k-list{background:#13b36a}.k-hol{background:#4a5568}    /* 신규상장 · 휴장 (11/10) */
 .day{background:#fff;border-radius:12px;padding:8px 10px;margin-bottom:10px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
 .day.today{border:2px solid var(--pink)}
 .day h4{text-align:center;font-size:13px;font-weight:700;margin-bottom:6px}
@@ -251,7 +252,7 @@ main{min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
     <div class="wk"><span class="num" id="schedNum">9</span><span class="arr" onclick="schedMove(-1)">‹</span><span class="rng" id="schedRng"></span><span class="arr" onclick="schedMove(1)">›</span>
       <span class="seg"><span class="on" id="segDay" onclick="setSchedMode('day')">일</span><span id="segWeek" onclick="setSchedMode('week')">주</span></span></div>
     <div class="legend">
-      <span><i class="k-theme"></i>테마</span><span><i class="k-item"></i>개별·실적</span><span><i class="k-ipo"></i>공모청약</span><span><i class="k-lock"></i>보호예수 해제</span><span><i class="k-pol"></i>제도·해외</span>
+      <span><i class="k-theme"></i>테마</span><span><i class="k-item"></i>개별·실적</span><span><i class="k-list"></i>신규상장</span><span><i class="k-ipo"></i>공모청약</span><span><i class="k-lock"></i>보호예수 해제</span><span><i class="k-hol"></i>휴장</span><span><i class="k-pol"></i>제도·해외</span>
     </div>
     <div id="schedList"></div>
     <p class="disc">주의사항 : 자료를 참고하되 내부적으로 가공처리하므로 오류가 있을 수 있습니다. 일정은 DART 공시와 네이버 뉴스 제목에서 날짜를 읽어 만든 것이라 빠지거나 틀릴 수 있어요. 해당 정보는 투자 권유나 종목 추천이 아닙니다.</p>
@@ -568,7 +569,7 @@ function renderRank(){
 /* ---------- 3. 마켓일정 (3차: 일/주 보기, 날짜 이동) ----------
    DATA.sched = [{d:'YYYYMMDD', label:'11.9(월)', today, ev:[{k, t, s, u, c}]}]  k: theme·item·earn·ipo·lock·pol·ev */
 let schedMode="day", schedCur=null;
-const KNM={theme:"테마",item:"개별",earn:"실적",ipo:"공모",lock:"해제",pol:"제도",ev:"행사"};
+const KNM={theme:"테마",item:"개별",earn:"실적",list:"상장",ipo:"공모",lock:"해제",hol:"휴장",pol:"제도",ev:"행사"};
 function ymd(dt){return dt.getFullYear()+String(dt.getMonth()+1).padStart(2,"0")+String(dt.getDate()).padStart(2,"0");}
 function kstDate(){const p=Object.fromEntries(new Intl.DateTimeFormat("ko-KR",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).map(x=>[x.type,x.value]));return new Date(+p.year,+p.month-1,+p.day);}
 function setSchedMode(m){schedMode=m;$("#segDay").classList.toggle("on",m==="day");$("#segWeek").classList.toggle("on",m==="week");renderSched();}
