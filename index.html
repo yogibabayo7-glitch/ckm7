@@ -461,8 +461,21 @@ function setSrc(state, txt){ const el=$("#src"); el.className="src "+state; $("#
 function renderAll(){ renderGroups();renderRank();renderSched();renderFz();renderTotal();renderMemo();renderCal();renderBars(); }
 
 /* ---------- 1. 마켓중심 — 테마 카드 (종목 2~7개) + 개별이슈 ---------- */
+/* 11/10: 카드 종목 = 테마 전체 종목(all) 중 지금 등락률 높은 4개 (10초 시세로 계속 다시 줄 세움) */
+function cardItems(g){
+  const old={};(g.items||[]).forEach(s=>old[s.code]=s);
+  let c;
+  if(g.all&&g.all.length){
+    c=g.all.map(r=>{const o=old[r[0]];const pct=Number(r[4])||0;
+      return {code:r[0],n:r[1],p:r[2],pct:pct,t:o?o.t:"",hit:pct>=29.5?1:0,
+        amt:r[5]?((r[6]?"≈":"")+f(r[5])+"억"):(o?o.amt:"—"),
+        bar:o&&o.bar?o.bar:[0,Math.round(Math.min(100,Math.abs(pct)/30*100))]};});
+  }else c=[...(g.items||[])];
+  c.sort((a,b)=>(b.pct||0)-(a.pct||0));
+  return c.slice(0,4);
+}
 function cardHtml(g,solo){
-  const items=(g.items||[]).slice(0,4);   // 11/10 티마처럼 카드당 4종목 고정
+  const items=cardItems(g);   // 11/10 티마처럼 카드당 4종목 고정 · 지금 제일 센 종목이 맨 위
   return `<div class="g"><h3 onclick="openTheme('${jsq(g.name)}'${solo?",1":""})"><span>${esc(g.name)}</span>${g.amt?`<span class="amt">${g.amt}</span>`:'<span class="amt" style="color:var(--sub)">›</span>'}</h3>
   <div class="news">${esc(g.news||"")}</div>
   ${items.map(s=>`<div class="s clk ${s.hit?"hit":""}" onclick="openStock('${s.code||""}','${jsq(s.n)}')">${s.hit?"":'<span class="flag"></span>'}
@@ -1102,7 +1115,7 @@ function applyQuotes(Q,t){
   const gs=[...(DATA.groups||[]),DATA.solo].filter(Boolean);
   gs.forEach(g=>{
     (g.items||[]).forEach(s=>{const q=Q[s.code];if(q){s.p=q[0];s.pct=q[1];s.hit=q[1]>=29.5?1:0;n++;}});
-    (g.all||[]).forEach(r=>{const q=Q[r[0]];if(q){r[2]=q[0];r[3]=q[2];r[4]=q[1];}});
+    (g.all||[]).forEach(r=>{const q=Q[r[0]];if(q){r[2]=q[0];r[3]=q[2];r[4]=q[1];n++;}});
   });
   ["amt","up","dn"].forEach(k=>((DATA.rank||{})[k]||[]).forEach(r=>{const q=Q[r[5]];if(q){r[1]=q[0];r[2]=q[1];}}));
   Object.keys(Q).forEach(c=>{const s=(DATA.stk||{})[c];if(s){s.p=Q[c][0];s.r=Q[c][1];s.chg=Q[c][2];}});
