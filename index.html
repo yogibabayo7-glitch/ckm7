@@ -195,6 +195,11 @@ tr.clk:hover td{background:#f7fbfd}
 .legend span{display:flex;align-items:center;gap:4px}.legend i{width:10px;height:10px;border-radius:50%}
 .ustbl td{font-weight:700}
 .night .hd{display:flex;align-items:baseline;gap:8px;font-size:13px;font-weight:700;margin-bottom:4px}
+/* 11/10: 티마처럼 위(로고·검색)·아래(탭) 고정, 가운데만 스크롤 · 당겨서 출렁임 없음 */
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+#app{height:100vh;height:100dvh;min-height:0;overflow:hidden}
+header,.src,nav{flex-shrink:0}
+main{min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 </style>
 </head>
 <body>
@@ -457,7 +462,7 @@ function renderAll(){ renderGroups();renderRank();renderSched();renderFz();rende
 
 /* ---------- 1. 마켓중심 — 테마 카드 (종목 2~7개) + 개별이슈 ---------- */
 function cardHtml(g,solo){
-  const items=(g.items||[]);
+  const items=(g.items||[]).slice(0,4);   // 11/10 티마처럼 카드당 4종목 고정
   return `<div class="g"><h3 onclick="openTheme('${jsq(g.name)}'${solo?",1":""})"><span>${esc(g.name)}</span>${g.amt?`<span class="amt">${g.amt}</span>`:'<span class="amt" style="color:var(--sub)">›</span>'}</h3>
   <div class="news">${esc(g.news||"")}</div>
   ${items.map(s=>`<div class="s clk ${s.hit?"hit":""}" onclick="openStock('${s.code||""}','${jsq(s.n)}')">${s.hit?"":'<span class="flag"></span>'}
