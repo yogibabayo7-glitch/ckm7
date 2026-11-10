@@ -670,7 +670,7 @@ function jbSimple(D){
   (DATA.search||[]).slice(0,5).forEach((r,i)=>add("조회",r[1],r[2],i+1));
   ((DATA.rank||{}).amt||[]).slice(0,5).forEach((r,i)=>add("대금",r[5],r[0],i+1,{p:r[1],r:r[2]}));
   (DATA.fz.sf||[]).slice(0,5).forEach((r,i)=>add("상따",r[12],r[0],i+1));
-  const jbAll=[...(D.top||[]),...(D.upper||[])].filter(r=>r[15]!=null).sort((a,b)=>b[15]-a[15]);
+  const _seen=new Set(), jbAll=[...(D.top||[]),...(D.upper||[])].filter(r=>r[15]!=null).sort((a,b)=>b[15]-a[15]).filter(r=>!_seen.has(r[3])&&_seen.add(r[3]));   // 같은 종목 한 번만
   jbAll.slice(0,5).forEach((r,i)=>add("종베",r[3],r[2],i+1,{p:r[4],r:r[5]}));
   const kind=m=>{const n=Object.keys(m.src).length, s=m.src;
     if(n>=3||(s.대금&&s.대금<=3&&s.조회))return ["대장주","#e8392f","시장에서 제일 센 종목 — 돈도 몰리고 사람들도 제일 많이 봄"];
@@ -702,7 +702,7 @@ function jbSimple(D){
   const t2=`<h6 class="jbh">✅ 오늘 종베 추천 5 <span class="sub">점수 높은 순 — 실제로는 2~3개만</span></h6>
   <table class="jbeasyt jbpick"><tr><th>#</th><th>종목·점수</th><th>현재가</th><th>할 일 <span class="sub2"><span class="reg">정규장</span> · <span class="nxt">넥스트장</span></span></th></tr>
   ${cut.map((r,i)=>`<tr class="clk" onclick="openStock('${r[3]||""}','${jsq(r[2])}')">
-    <td class="no">${i+1}</td><td class="nm2"><span class="gr" style="background:${JB_GRADE[r[1]]||"#8a97a5"}">${r[1]}</span> <b>${esc(r[2])}</b><span class="sub2">${r[15]}점 · 대금 ${String(r[6]).replace("≈","")}억</span></td>
+    <td class="no">${i+1}</td><td class="nm2"><span class="kb" style="background:${JB_GRADE[r[1]]||"#8a97a5"}">${r[1]}</span> <b>${esc(r[2])}</b><span class="sub2">${r[15]}점 · 대금 ${String(r[6]).replace("≈","")}억</span></td>
     <td><b class="${cls(r[5])}">${f(r[4])}</b><span class="sub2 ${cls(r[5])}">${Number(r[5]).toFixed(2)}%</span></td>
     <td class="todo">${todo(r)}</td></tr>`).join("")}
   ${cut.length?"":'<tr><td colspan="4" style="padding:14px;color:var(--sub)">조건에 드는 종목이 아직 없어요</td></tr>'}</table>
