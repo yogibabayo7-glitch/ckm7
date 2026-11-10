@@ -647,6 +647,17 @@ function renderFz(){
     <table>${head}${(D.top||[]).map(r=>row(r,true)).join("")}${(D.top||[]).length?"":'<tr><td colspan="5" style="padding:16px;color:var(--sub)">조건에 드는 종목이 아직 없어요</td></tr>'}</table>
     <h6 class="jbh">② 상한가 종베 <span class="sub" style="color:var(--dn)">상한가라고 다 하면 큰일 — 가끔만, 위 조건까지 같이 볼 것</span></h6>
     <table>${head}${(D.upper||[]).map(r=>row(r,true)).join("")}${(D.upper||[]).length?"":'<tr><td colspan="5" style="padding:16px;color:var(--sub)">오늘 상한가(또는 +25% 유지) 종목이 없어요</td></tr>'}</table>
+    <div class="card" style="margin:10px 0"><h6>🌅 내일 아침 대응 <span class="sub">강의 자료 + 사용자 확인</span></h6>
+      <div style="font-size:12px;line-height:1.7">
+        <b class="up">① 갭상승·보합으로 시작</b> → 10분 안에 70~80% 정리, 나머지는 20시 종가 +3% 목표<br>
+        <b class="dn">② 뚝 떨어져서 시작</b> → <b>바로 빼지 말 것</b>. 순서대로 봅니다<br>
+        &nbsp;&nbsp;· <b>F존</b>: 그날 고점 대비 −8%(B1)·−10%(B2) 자리면 1:1 추매 → <b>바닥 대비 +4% 반등</b>에 매도 (내 평단 +4%가 아님)<br>
+        &nbsp;&nbsp;· <b>피뢰침</b>: 전날 고가 10%↑ 찍고 −15%↑ 밀린 모양이면 10시까지 기다려 보고, 반등 없으면 정리 (추매 없음)<br>
+        &nbsp;&nbsp;· <b>손절선</b>: B3(−12%) 이탈이면 손절 (유도리는 B2 −10%)<br>
+        &nbsp;&nbsp;· 10시까지 아무것도 안 되면 50% 손절하고 하루 더(하트존 관점) · <b>10시 이후 물타기 금지</b><br>
+        <b>③ 전날 종목 중 거래대금이 안 터진 것</b>은 10시에 정리<br>
+        <span class="sub">※ "급락해도 기다리면 올라온다"는 백테스트에서 '기다리기' 성적으로 따로 재고 있습니다 — 결과는 data/종베백테스트.txt 의 '갭하락한 날 … 되돌린 날 %' 줄</span>
+      </div></div>
     <p class="disc" style="padding:6px 8px"><b>점수 = 한 가지로 정하지 않고 여러 항목을 묶은 것</b> (○ = 맞은 항목, × = 아쉬운 항목) — 거래대금 순위·양봉·+1%·120봉 최고종가·52주 신고가·외국인/기관 양매수·프로그램 순매수(비중 20% 미만)·거래대금 1,000억·주도 테마 1등·장 상황(상승장=대형 주도주, 하락장=테마 대장) / 빼는 것: 음봉·덩치 작음·프로그램 과함·과거 성적 마이너스·상한가(무너지는 경우 많음).
     S 70점↑ · A 50↑ · B 30↑ · C 그 아래.<br>
     <b>'과거' 칸은 생각이 아니라 측정값</b>입니다 — 전 종목 2년치에서 같은 조건(거래대금 구간 × 지금 장 상황)의 1건당 기대수익·승률·건수. (없으면 종베백테스트.bat 또는 16:10 자동)<br>
