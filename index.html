@@ -1127,6 +1127,6 @@ function applyQuotes(Q,t){
 setInterval(pollQuotes,10*1000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)pollQuotes();});
 </script>
-<script>if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("sw.js").catch(()=>{});}</script>
+<script>if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).catch(()=>{});}</script>
 </body>
 </html>
