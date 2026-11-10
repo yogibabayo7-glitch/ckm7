@@ -221,6 +221,18 @@ main{min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .fz td.nm .kind{display:inline-block;background:#1a4fd8;color:#fff;font-size:9.5px;font-weight:700;border-radius:4px;padding:0 4px;margin-right:3px}
 .vib{display:inline-block;background:#13b36a;color:#fff;font-size:9px;font-weight:800;border-radius:3px;padding:0 3px;margin-left:3px;vertical-align:1px}
 .vib.off{background:#c3ccd6;color:#fff}
+/* 11/10 종베: 세로로 너무 길어서 카드형 — 종목 한 줄 + 숫자 4칸 가로 + 근거는 접기 */
+.jbw table{display:block;width:100%}.jbw tbody{display:block}
+.jbw tr:not(.clk){display:none}
+.jbw tr.clk{display:grid;grid-template-columns:repeat(4,1fr);gap:2px 6px;background:#fff;border:1px solid #e3e9ef;border-radius:10px;margin:6px 4px;padding:7px 8px}
+.jbw tr.clk td{display:block;border:0;padding:2px 0;text-align:left;font-size:12px}
+.jbw tr.clk td.nm{grid-column:1/-1;max-width:none!important;white-space:normal}
+.jbw tr.clk td[data-l]::before{content:attr(data-l);display:block;font-size:10px;color:var(--sub);font-weight:400}
+.jbw tr.clk td .big{font-size:14px}
+.jbw details.jbd{margin-top:3px}
+.jbw details.jbd summary{font-size:11px;color:#2b5fd9;cursor:pointer;list-style:none}
+.jbw details.jbd summary::before{content:"▸ "}.jbw details.jbd[open] summary::before{content:"▾ "}
+.jbw details.jbdisc{margin:8px 6px}
 </style>
 </head>
 <body>
@@ -623,6 +635,7 @@ function setFz(m,btn){fzMode=m;[...$("#fzPills").children].forEach(b=>b.classLis
 function zoneCell(v,hit,idx){ return `<span class="${hit===idx?"box":""}">${f(v)}</span>`; }
 function gapTxt(g,hit){ return (hit>=0||g==null)?"":`<span class="m sub">${g<=0?"진입":"−"+Number(g).toFixed(1)+"%"}</span>`; }
 function renderFz(){
+  { const _el=document.getElementById("fzTable"); if(_el) _el.classList.remove("jbw"); }
   const el=$("#fzTable");
   [...$("#fzPills").children].forEach(b=>b.classList.toggle("on", (b.getAttribute("onclick")||"").indexOf("'"+fzMode+"'")>=0));
   if(fzMode==="jb"){
@@ -636,17 +649,20 @@ function renderFz(){
     const row=(r,showRank)=>`<tr class="clk" onclick="openStock('${r[3]||""}','${jsq(r[2])}')">
       <td class="nm" style="max-width:none;white-space:normal">${showRank&&r[0]?`<span class="rk">${r[0]}위</span> `:""}<span class="gr" style="background:${JB_GRADE[r[1]]||"#8a97a5"}">${r[1]}</span> ${esc(r[2])}${r[10]?`<span class="vib off">VI ${r[10]}</span>`:""}
         <span class="dt"><b>${r[15]!=null?r[15]+"점":""}</b> ${esc(r[9]||"")}${r[7]!=="—"?" · 시총 "+r[7]+"조":""}</span>
+        <details class="jbd" onclick="event.stopPropagation()"><summary>근거·기법 자세히</summary>
         ${(r[16]||[]).length?`<span class="dt" style="color:#0a7f4f">○ ${(r[16]||[]).slice(0,3).map(x=>esc(x[0])).join(" · ")}</span>`:""}
         ${(r[17]||[]).length?`<span class="dt" style="color:var(--sub)">× ${(r[17]||[]).slice(0,2).map(esc).join(" · ")}</span>`:""}
         ${(r[20]||[]).length?`<span class="dt">${(r[20]||[]).map(t=>`<b class="kind">${esc(t[0])}</b> ${esc(t[1])}`).join("<br>")}</span>`:""}
         ${(r[21]&&r[21].기준봉&&r[21].기준봉.날짜)?`<span class="dt sub">기준봉 ${esc(r[21].기준봉.날짜)} +${r[21].기준봉.등락}%${r[21].피보&&r[21].피보["0.5"]?` · 피보 0.5 ${f(r[21].피보["0.5"])} / 0.618 ${f(r[21].피보["0.618"])}`:""}${r[21].m15&&r[21].m15.정배열!=null?` · 15분봉 ${r[21].m15.방금전환?"정배열 방금 전환":(r[21].m15.정배열?"정배열":"역배열")}`:""}</span>`:""}
         ${(r[22]&&r[22].점수!=null)?`<span class="dt sub">강의 체크리스트 ${r[22].점수}점${(r[22].아쉬움||[]).length?` — 아쉬움: ${esc(r[22].아쉬움[0])}`:""}</span>`:""}
+        </details>
         ${r[14]?`<span class="dt" style="color:var(--dn)">⚠ ${esc(r[14])}</span>`:""}</td>
-      <td><span class="big ${cls(r[5])}">${f(r[4])}</span><span class="m ${cls(r[5])}">${r[5]>=29.5?"↑":""}${Number(r[5]).toFixed(2)}%</span></td>
-      <td>${String(r[6]).replace("≈","")}${(r[19]&&r[19].am!=null&&r[19].pm!=null)?`<span class="m ${r[19].pm>r[19].am?"up":"sub"}">오전 ${f(r[19].am)}<br>→오후 ${f(r[19].pm)}</span>`:(r[19]&&r[19].spd?`<span class="m sub">분당 ${r[19].spd}억</span>`:"")}</td>
-      <td>${flowTxt(r[11])}${r[12]!=null?`<span class="m sub">${r[12]}%</span>`:""}${(r[18]&&(r[18][1]!=null||r[18][2]!=null))?`<span class="m sub">외${r[18][1]==null?"—":r[18][1]}/기${r[18][2]==null?"—":r[18][2]}</span>`:""}</td>
-      <td style="font-size:11.5px">${r[13]?`<b class="${r[13].exp>0?"up":"dn"}">${r[13].exp>0?"+":""}${r[13].exp}%</b><span class="m sub">${r[13].win}% · ${r[13].n}건</span>`:'<span class="sub">기준표<br>없음</span>'}</td></tr>`;
+      <td data-l="현재가"><span class="big ${cls(r[5])}">${f(r[4])}</span><span class="m ${cls(r[5])}">${r[5]>=29.5?"↑":""}${Number(r[5]).toFixed(2)}%</span></td>
+      <td data-l="대금(억)">${String(r[6]).replace("≈","")}${(r[19]&&r[19].am!=null&&r[19].pm!=null)?`<span class="m ${r[19].pm>r[19].am?"up":"sub"}">오전 ${f(r[19].am)}<br>→오후 ${f(r[19].pm)}</span>`:(r[19]&&r[19].spd?`<span class="m sub">분당 ${r[19].spd}억</span>`:"")}</td>
+      <td data-l="프로그램 · 외/기">${flowTxt(r[11])}${r[12]!=null?`<span class="m sub">${r[12]}%</span>`:""}${(r[18]&&(r[18][1]!=null||r[18][2]!=null))?`<span class="m sub">외${r[18][1]==null?"—":r[18][1]}/기${r[18][2]==null?"—":r[18][2]}</span>`:""}</td>
+      <td data-l="과거 1건당" style="font-size:11.5px">${r[13]?`<b class="${r[13].exp>0?"up":"dn"}">${r[13].exp>0?"+":""}${r[13].exp}%</b><span class="m sub">${r[13].win}% · ${r[13].n}건</span>`:'<span class="sub">기준표<br>없음</span>'}</td></tr>`;
     const head=`<tr><th>등급·종목<br><span class="sub">점수·근거</span></th><th>현재가</th><th>대금<br><span class="sub">(억)</span></th><th>프로그램<br><span class="sub">외인/기관</span></th><th>과거<br><span class="sub">1건당</span></th></tr>`;
+    el.classList.add("jbw");
     el.innerHTML=`<div class="jbhd"><b>${phase[0]}</b> ${phase[1]}${D.env&&D.env!=="모름"?` · 지금 <b style="background:${D.env==="상승장"?"#13b36a":"#4a5568"}">${D.env}</b>`:""}${th?`<br>오늘 거래대금 상위 10 테마 — <b style="background:#2b5fd9">${th}</b>`:""}${(DATA.jb_plan||[]).length?`<br>${(DATA.jb_plan||[]).map(x=>esc(x)).join(" · ")}`:""}</div>
     <h6 class="jbh">① 거래대금 상위 종베 <span class="sub">큰손이 가는 자리 — @주도주종베(상위 30·+1%↑) · @끼도주종베(상위 35·양봉·120봉 최고종가)</span></h6>
     <table>${head}${(D.top||[]).map(r=>row(r,true)).join("")}${(D.top||[]).length?"":'<tr><td colspan="5" style="padding:16px;color:var(--sub)">조건에 드는 종목이 아직 없어요</td></tr>'}</table>
@@ -657,12 +673,13 @@ function renderFz(){
     ${(D.prev||[]).map(r=>`<tr class="clk" onclick="openStock('${r[3]||""}','${jsq(r[2])}')">
       <td class="nm" style="max-width:none;white-space:normal"><span class="gr" style="background:${PV_COLOR[r[1]]||"#8a97a5"}">${esc(r[1])}</span> <span class="gr" style="background:${JB_GRADE[r[0]]||"#8a97a5"}">${r[0]}</span> ${esc(r[2])}${r[9]?`<span class="vib off">VI ${r[9]}</span>`:""}
         <span class="dt">${esc(r[8]||"")}${r[7]!=="—"?" · 시총 "+r[7]+"조":""}${r[13]&&r[13].날짜?" · 기준봉 "+esc(r[13].날짜)+" +"+r[13].등락+"%":""}</span>
+        <details class="jbd" onclick="event.stopPropagation()"><summary>근거 자세히</summary>
         ${(r[10]||[]).length?`<span class="dt" style="color:#0a7f4f">○ ${(r[10]||[]).map(esc).join("<br>○ ")}</span>`:""}
         ${(r[11]||[]).length?`<span class="dt" style="color:var(--dn)">⚠ ${(r[11]||[]).map(esc).join("<br>⚠ ")}</span>`:""}
-        ${r[14]&&r[14]["0.5"]?`<span class="dt sub">피보 0.5 ${f(r[14]["0.5"])} / 0.618 ${f(r[14]["0.618"])}</span>`:""}</td>
-      <td><span class="big ${cls(r[5])}">${f(r[4])}</span><span class="m ${cls(r[5])}">${Number(r[5]).toFixed(2)}%</span></td>
-      <td>${String(r[6]).replace("≈","")}</td>
-      <td style="font-size:11.5px">${r[12]?Object.keys(r[12]).map(k=>`<b>${esc(k)}</b> ${esc(r[12][k])}`).join("<br>"):""}</td></tr>`).join("")}
+        ${r[14]&&r[14]["0.5"]?`<span class="dt sub">피보 0.5 ${f(r[14]["0.5"])} / 0.618 ${f(r[14]["0.618"])}</span>`:""}</details></td>
+      <td data-l="현재가"><span class="big ${cls(r[5])}">${f(r[4])}</span><span class="m ${cls(r[5])}">${Number(r[5]).toFixed(2)}%</span></td>
+      <td data-l="대금(억)">${String(r[6]).replace("≈","")}</td>
+      <td data-l="매수 자리 · 손절·목표" style="font-size:11.5px;grid-column:span 2">${r[12]?Object.keys(r[12]).map(k=>`<b>${esc(k)}</b> ${esc(r[12][k])}`).join("<br>"):""}</td></tr>`).join("")}
     ${(D.prev||[]).length?"":'<tr><td colspan="4" style="padding:16px;color:var(--sub)">오늘은 강의 기준(피뢰침·하트존)에 맞는 봉이 없어요 — 없으면 안 하는 게 강의 원칙입니다</td></tr>'}</table>
     ${D.규칙&&D.규칙.슬롯?`<div class="card" style="margin:10px 0"><h6>🎯 기법 자동 순환 — 지금 어디까지 들어갔나 <span class="sub">상따 · 눌림 · 종베 · 스켈핑 · 돌파</span></h6>
       <div style="font-size:12px;line-height:1.8">${Object.keys(D.규칙.슬롯).map(k=>{const v=D.규칙.슬롯[k];const c=v.상태==="ready"?"#13b36a":(v.상태==="부분"?"#f0a500":"#8a97a5");
@@ -679,7 +696,7 @@ function renderFz(){
         <b>③ 전날 종목 중 거래대금이 안 터진 것</b>은 10시에 정리<br>
         <span class="sub">※ "급락해도 기다리면 올라온다"는 백테스트에서 '기다리기' 성적으로 따로 재고 있습니다 — 결과는 data/종베백테스트.txt 의 '갭하락한 날 … 되돌린 날 %' 줄</span>
       </div></div>
-    <p class="disc" style="padding:6px 8px"><b>점수 = 한 가지로 정하지 않고 여러 항목을 묶은 것</b> (○ = 맞은 항목, × = 아쉬운 항목) — 거래대금 순위·양봉·+1%·120봉 최고종가·52주 신고가·외국인/기관 양매수·프로그램 순매수(비중 20% 미만)·거래대금 1,000억·주도 테마 1등·장 상황(상승장=대형 주도주, 하락장=테마 대장) / 빼는 것: 음봉·덩치 작음·프로그램 과함·과거 성적 마이너스·상한가(무너지는 경우 많음).
+    <details class="jbd jbdisc"><summary>점수·기법 설명 펼치기</summary><p class="disc" style="padding:6px 8px"><b>점수 = 한 가지로 정하지 않고 여러 항목을 묶은 것</b> (○ = 맞은 항목, × = 아쉬운 항목) — 거래대금 순위·양봉·+1%·120봉 최고종가·52주 신고가·외국인/기관 양매수·프로그램 순매수(비중 20% 미만)·거래대금 1,000억·주도 테마 1등·장 상황(상승장=대형 주도주, 하락장=테마 대장) / 빼는 것: 음봉·덩치 작음·프로그램 과함·과거 성적 마이너스·상한가(무너지는 경우 많음).
     S 70점↑ · A 50↑ · B 30↑ · C 그 아래.<br>
     <b>11/10 추가 — 강의자료 12개 PDF(약 605쪽) 기준</b>: 봉 성격 판정(피뢰침 / 하트존 / ⚠어중간한 양봉 / 연속 기준봉)·전일 대비 거래량 증감·아래꼬리·기준봉 대금 비교·피보 0.382·0.5·0.618·15분봉 60-120 정배열·단기과열·투자경고 제외·2시30분 이후 자금 재유입을 점수에 넣었습니다.
     <b>피뢰침</b> = 고가 +10%↑ 찍고 고가대비 −15%↑ 밀림 + 거래대금 1,000억↑ + <b>전일 대비 거래량 증가</b> + 아래꼬리 있으면 A급 (악재 없어야 함).
@@ -687,7 +704,7 @@ function renderFz(){
     둘 다 목표 4%↑ · 10시까지 해결 · <b>추매 없음</b> · D+1 저점 이탈 손절.
     <b>⚠어중간한 양봉</b>(크게 올랐는데 애매하게만 밀림)은 피뢰침도 하트존도 아니라서 강의에서 가장 조심하라는 구간 — 과비중 금지·현금 남기기.<br>
     <b>'과거' 칸은 생각이 아니라 측정값</b>입니다 — 전 종목 2년치에서 같은 조건(거래대금 구간 × 지금 장 상황)의 1건당 기대수익·승률·건수. (없으면 종베백테스트.bat 또는 16:10 자동)<br>
-    사는 때 15:00~15:20(비중 50%) · 19:50~20:00 NXT 추가(선택) · 파는 때 다음날 보합·상승이면 10분 안 70~80% 정리, 나머지 20시 종가 +3% / 하락이면 추매 없이 평단 −4% 손절</p>`;
+    사는 때 15:00~15:20(비중 50%) · 19:50~20:00 NXT 추가(선택) · 파는 때 다음날 보합·상승이면 10분 안 70~80% 정리, 나머지 20시 종가 +3% / 하락이면 추매 없이 평단 −4% 손절</p></details>`;
     return;
   }
   if(fzMode==="sf"){
