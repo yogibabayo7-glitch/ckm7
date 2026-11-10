@@ -469,6 +469,7 @@ function applyLive(d){
   DATA.rank = d.rank;
   if(d.fz) DATA.fz = d.fz;
   if(d.cal&&d.cal.length) DATA.cal = d.cal;
+  DATA.jb_env = d.jb_env||"";    // 지금 장 상황 (코스피 20일선 위/아래)
   DATA.vi = d.vi||{};            // VI(변동성완화장치) {코드:[발동시각, 지금발동중, 횟수, 구분]} (11/10)
   DATA.flow = d.flow||{};        // 5차: 종목별 수급·프로그램 순매수(억) {code:{n,d:[[날짜,개인,외국인,기관,프로그램,종가,등락률]…],at}}
   DATA.notes = d.notes||[];
@@ -623,15 +624,16 @@ function renderFz(){
     const phase = h<"14:30" ? ["준비","지금은 지켜보는 시간 — 14:30부터 종베 준비"] :
                   h<="15:20" ? ["매수 시간","15:00~15:20 목표 비중 50% · 19:50~20:00 NXT 에서 50% 추가(선택)"] :
                   h<="20:00" ? ["마감 뒤","19:50~20:00 NXT 확인 후 추가 매수·정리"] : ["장 끝","내일 아침 8~10시가 파는 시간"];
-    el.innerHTML=`<div class="jbhd"><b>${phase[0]}</b> ${phase[1]}</div>
-    <table><tr><th>등급<br><span class="sub">종목</span></th><th>현재가</th><th>대금<br><span class="sub">(억)</span></th><th>프로그램<br><span class="sub">순매수(억)</span></th><th>상태</th></tr>
-    ${rows.map(r=>`<tr class="clk" onclick="openStock('${r[2]||""}','${jsq(r[1])}')"><td class="nm" style="max-width:none;white-space:normal"><span class="gr" style="background:${JB_GRADE[r[0]]||"#8a97a5"}">${r[0]}</span> ${esc(r[1])}${r[9]?`<span class="vib off">VI ${r[9]}</span>`:""}<span class="dt">${esc(r[8]||"")}${r[6]!=="—"?" · 시총 "+r[6]+"조":""}</span>${r[12]?`<span class="dt" style="color:var(--dn)">⚠ ${esc(r[12])}</span>`:""}</td>
+    el.innerHTML=`<div class="jbhd"><b>${phase[0]}</b> ${phase[1]}${DATA.jb_env&&DATA.jb_env!=="모름"?` · 지금 <b style="background:${DATA.jb_env==="상승장"?"#13b36a":"#4a5568"}">${DATA.jb_env}</b>`:""}</div>
+    <table><tr><th>등급<br><span class="sub">종목</span></th><th>현재가</th><th>대금<br><span class="sub">(억)</span></th><th>프로그램<br><span class="sub">순매수(억)</span></th><th>과거 이 조건<br><span class="sub">1건당·승률</span></th></tr>
+    ${rows.map(r=>`<tr class="clk" onclick="openStock('${r[2]||""}','${jsq(r[1])}')"><td class="nm" style="max-width:none;white-space:normal"><span class="gr" style="background:${JB_GRADE[r[0]]||"#8a97a5"}">${r[0]}</span> ${esc(r[1])}${r[9]?`<span class="vib off">VI ${r[9]}</span>`:""}<span class="dt"><b>${esc(r[7])}</b></span><span class="dt">${esc(r[8]||"")}${r[6]!=="—"?" · 시총 "+r[6]+"조":""}</span>${r[12]?`<span class="dt" style="color:var(--dn)">⚠ ${esc(r[12])}</span>`:""}</td>
       <td><span class="big ${cls(r[4])}">${f(r[3])}</span><span class="m ${cls(r[4])}">${r[4]>=29.5?"↑":""}${Number(r[4]).toFixed(2)}%</span></td>
       <td>${String(r[5]).replace("≈","")}</td>
       <td>${flowTxt(r[10])}${r[11]!=null?`<span class="m sub">${r[11]}%</span>`:""}</td>
-      <td style="font-size:11.5px">${esc(r[7])}</td></tr>`).join("")}
+      <td style="font-size:11.5px">${r[13]?`<b class="${r[13].exp>0?"up":"dn"}">${r[13].exp>0?"+":""}${r[13].exp}%</b><span class="m sub">${r[13].win}% · ${r[13].n}건</span><span class="m sub">최악 ${r[13].worst10}%</span>`:'<span class="sub">기준표<br>없음</span>'}</td></tr>`).join("")}
     ${rows.length?"":'<tr><td colspan="5" style="padding:20px;color:var(--sub)">오늘 상한가(또는 +25% 유지) 종목이 아직 없어요</td></tr>'}</table>
-    <p class="disc" style="padding:6px 8px"><b>종베 = 상한가 간 종목을 장 마감 때 사서 다음날 아침 급등할 때 파는 것</b> (강의 자료 기준)<br>
+    <p class="disc" style="padding:6px 8px"><b>'과거 이 조건' = 생각이 아니라 측정한 숫자입니다.</b> 전 종목 2년치를 돌려서, 같은 조건(상한가 여부·거래대금 구간·지금 같은 장 상황)이 과거에 어땠는지 1건당 기대수익·승률·건수·최악10%를 꺼내 보여줍니다. 수수료·세금 뺀 값이고, 1건당 기대가 0 이하면 '돈이 안 됐음' 경고가 붙어요. (표가 없으면 종베백테스트.bat 한 번 또는 16:10 자동 실행)<br>
+    <b>종베 = 상한가 간 종목을 장 마감 때 사서 다음날 아침 급등할 때 파는 것</b> (강의 자료 기준)<br>
     대상 = 오늘 상한가를 간 종목 중 지금도 +25% 이상 (상한가가 풀려도 종가 25% 위면 보유 · 25% 깨지면 실패) ·
     <b>거래대금 1,000억 이상</b>이어야 함 — 적은 것을 잘못 잡으면 다음날 아침에 밀림(B등급 = 1,000억 미달 주의) ·
     등급 S = 1,000억↑ + 지금 제일 센 테마의 1등 종목 / A = 1,000억↑ / B = 미달 ·
