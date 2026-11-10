@@ -791,15 +791,16 @@ function renderFz(){
   }
   if(fzMode==="sf"){
     const rows=DATA.fz.sf||[];
-    el.innerHTML=`<table><tr><th>종목명</th><th>상한가<br><span class="sub">시각</span></th><th>현재가</th><th>대금(억)<br><span class="sub">시총(천억)</span></th><th>S1<br>S2</th><th>SF가<br><span class="sub">손절</span></th></tr>
-    ${rows.map(r=>`<tr class="clk" onclick="openStock('${r[12]||""}','${jsq(r[0])}')"><td class="nm">${r[0]}${r[11]?`<span class="dt">${r[11]}</span>`:""}</td>
-      <td><span class="big">${f(r[1])}</span><span class="m sub">${r[2]||"미도달"}</span></td>
+    const tbox=(v,t)=>`<span class="big ${t?"box":""}">${v!=null?f(v):"—"}</span><span class="m sub">${t?t+" 도달":"미도달"}</span>`;
+    el.innerHTML=`<table><tr><th>종목명</th><th>상한가<br><span class="sub">첫 터치</span></th><th>현재가</th><th>대금(억)<br><span class="sub">시총(천억)</span></th><th>SF가<br><span class="sub">도달 시각</span></th><th>F존 B1<br><span class="sub">도달 시각</span></th></tr>
+    ${rows.map(r=>`<tr class="clk" onclick="openStock('${r[12]||""}','${jsq(r[0])}')"><td class="nm"><b class="${nmCls(r[12])}">${r[0]}</b>${r[11]?`<span class="dt">${r[11]}</span>`:""}<span class="dt">S1 ${f(r[7])} · S2 ${f(r[8])} · 손절 ${f(r[9])}</span></td>
+      <td><span class="big">${f(r[1])}</span><span class="m sub">${r[2]&&r[2]!=="?"?r[2]:"미도달"}</span></td>
       <td><span class="big ${cls(r[4])}">${f(r[3])}</span><span class="m">${pctCell(r[4])}</span></td>
       <td>${r[5]}<span class="m sub">${r[6]}</span></td>
-      <td>${zoneCell(r[7],r[10],0)}<span class="m">${zoneCell(r[8],r[10],1)}</span>${gapTxt(r[14],r[10])}</td>
-      <td>${r[13]!=null?`<span class="big">${f(r[13])}</span>`:""}<span class="m dn">${f(r[9])}</span></td></tr>`).join("")}
+      <td>${tbox(r[13],r[16])}</td>
+      <td>${r.length>17?tbox(r[17],r[18]):"—"}</td></tr>`).join("")}
     ${rows.length?"":'<tr><td colspan="6" style="padding:20px;color:var(--sub)">오늘 고가가 +27% 이상인 종목 없음</td></tr>'}</table>
-    <p class="disc" style="padding:6px 8px">대상 = 그날 고가가 전일 종가 +27% 이상 · S1·S2 = 그날 고가 대비 −4%·−5% · SF가 = (S1+S2)/2 · 손절 = −10%(F존 B2) 이탈 · 주황 테두리 = 현재가가 들어온 자리, 회색 −% = S1까지 남은 거리. 10시 전 상한가·14시까지 상한가 못 간 종목은 제외(사유 표시)</p>`;
+    <p class="disc" style="padding:6px 8px">SF존 = 오늘 한 번이라도 전일 종가보다 27% 넘게 오른 종목 (상한가 따라잡기용 자리) · <b>SF가</b> = 그날 고가에서 4~5% 내려온 가운데 가격 · <b>F존 B1</b> = 고가에서 8% 내려온 가격 · 주황 상자 = 한 번이라도 닿음 (고가가 더 올라가도 상자는 남음) · 도달 시각은 5분마다 확인한 시각 · 거래대금 순 · 손절 = 고가 −10% 아래 · 10시 전 상한가·14시까지 상한가 못 간 종목은 관망/제외(사유 표시) · 종목 이름 <b class="nxt">적갈색</b> = 넥스트장에서도 거래</p>`;
   }else if(fzMode==="fzp"){
     const rows=DATA.fz.fzp;
     if(!rows){ el.innerHTML=`<div style="padding:30px 16px;text-align:center;color:var(--sub);font-size:13px">F존+ — 새 수집기가 돌면 채워져요 (오늘 주도주부터 쌓임)</div>`; return; }
