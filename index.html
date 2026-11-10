@@ -647,7 +647,7 @@ function renderSched(){
 
 /* ---------- 4. F존 ---------- */
 /* 11/10: 14시~15:30 에는 종베 탭이 먼저 (강의: 14:30~15:20 종베 준비·매수) */
-let fzMode=(()=>{const h=kstNow().slice(0,5);return (h>="14:00"&&h<="15:30")?"jb":"fzp";})();
+let fzMode=(()=>{const h=(kstNow().split(" ")[1]||"").slice(0,5);return (h>="14:00"&&h<="15:30")?"jb":"fzp";})();
 const JB_GRADE={S:"#e8392f",A:"#f0a500",B:"#8a97a5",C:"#c3ccd6","제외":"#4a5568"};
 const PV_COLOR={"피뢰침":"#e8392f","하트존":"#2b5fd9","어중간한양봉":"#8a97a5","연속기준봉":"#13b36a"};
 function setFz(m,btn){fzMode=m;[...$("#fzPills").children].forEach(b=>b.classList.toggle("on",b===btn));renderFz();}
@@ -662,7 +662,11 @@ function jbPlain(el){ // 강의 이름·장 번호 빼기
 }
 let NXTSET=null;
 function isNxt(code){ if(!DATA.nxt) return null; if(!NXTSET) NXTSET=new Set(String(DATA.nxt).split(";")); return NXTSET.has(code); }
-function nmCls(code){ const v=isNxt(code); return v===null?"":(v?"nxt":"reg"); }   // 적갈색 = 넥스트장에서도 거래 · 검정 = 정규장만
+function kstHM(){ return (kstNow().split(" ")[1]||"").slice(0,5); }   // "HH:MM" (kstNow 는 "11-10(화) 19:52:00")
+function inRegular(){ const h=kstHM(); return h>="09:00"&&h<"15:30"; }
+function nmCls(code){   // 11/10 사용자: 키움처럼 — 정규장 시세면 검정, 넥스트장 시세면 적갈색 (정규장 시간엔 모두 검정, 그 밖엔 넥스트장 거래 종목만 적갈색)
+  if(inRegular()) return "reg";
+  return isNxt(code)?"nxt":"reg"; }
 function jbStockOf(code){
   const st=(DATA.stk||{})[code];if(st&&st.p)return {p:st.p,r:st.r};
   const a=((DATA.rank||{}).amt||[]).find(r=>r[5]===code);if(a)return {p:a[1],r:a[2]};
@@ -696,7 +700,7 @@ function jbSimple(D){
     <td class="sc">${m.score}</td><td>${dot(m,"조회")}</td><td>${dot(m,"대금")}</td><td>${dot(m,"상따")}</td><td>${dot(m,"종베")}</td></tr>`;}).join("")}
   ${top.length?"":'<tr><td colspan="7" style="padding:14px;color:var(--sub)">아직 비교할 자료가 없어요 (수집기가 돌면 채워져요)</td></tr>'}</table>
   <p class="disc" style="padding:4px 8px"><b>조회</b> = 키움 실시간 종목조회 순위(사람들이 지금 많이 찾아보는 종목) · <b>대금</b> = 거래대금 상위 · <b>상따</b> = 오늘 27% 넘게 오른 종목 · <b>종베</b> = 종베 점수 순위<br>
-  <span class="kb" style="background:#e8392f">대장주</span> 3곳 이상에 나옴 · <span class="kb" style="background:#f0a500">주도주</span> 돈이 크게 몰리며 오름 · <span class="kb" style="background:#7b3fe4">끼도주</span> 돈은 덜해도 확 오르거나 관심 집중 · 종목 이름 <b class="nxt">적갈색</b> = 넥스트장에서도 거래, <b class="reg">검정</b> = 정규장만${(DATA.search||[]).length?"":" · ⚠ 실시간 종목조회는 새 수집기부터 들어와요"}</p>`;
+  <span class="kb" style="background:#e8392f">대장주</span> 3곳 이상에 나옴 · <span class="kb" style="background:#f0a500">주도주</span> 돈이 크게 몰리며 오름 · <span class="kb" style="background:#7b3fe4">끼도주</span> 돈은 덜해도 확 오르거나 관심 집중 · 종목 이름 <b class="reg">검정</b> = 정규장 시세, <b class="nxt">적갈색</b> = 넥스트장 시세${(DATA.search||[]).length?"":" · ⚠ 실시간 종목조회는 새 수집기부터 들어와요"}</p>`;
   const cut=jbAll.slice(0,5);
   const todo=r=>{const g=r[1], up=Number(r[5])>=29.5, w=(g==="S"||g==="A")?"사려는 돈의 절반":"조금만 (평소의 1/4)";
     return `<span class="reg">⏰ 오후 3:00~3:20 · ${up?"상한가 종목이라 조금만":w} 사기</span>
@@ -710,7 +714,7 @@ function jbSimple(D){
     <td><b class="${cls(r[5])}">${f(r[4])}</b><span class="sub2 ${cls(r[5])}">${Number(r[5]).toFixed(2)}%</span></td>
     <td class="todo">${todo(r)}</td></tr>`).join("")}
   ${cut.length?"":'<tr><td colspan="4" style="padding:14px;color:var(--sub)">조건에 드는 종목이 아직 없어요</td></tr>'}</table>
-  <p class="disc" style="padding:4px 8px">검정 글씨 = 정규장(오전 9시~오후 3시 30분) · <span style="color:#8b2e16;font-weight:700">적갈색 글씨 = 넥스트장(저녁 8시까지)</span> · 종목 이름 색: <b class="reg">검정 = 정규장에서만 거래</b> · <b class="nxt">적갈색 = 넥스트장(저녁 8시까지)에서도 거래</b><br>
+  <p class="disc" style="padding:4px 8px">검정 글씨 = 정규장(오전 9시~오후 3시 30분) · <span style="color:#8b2e16;font-weight:700">적갈색 글씨 = 넥스트장(저녁 8시까지)</span> · 종목 이름 색 (키움과 같음): <b class="reg">검정 = 정규장 시세</b> · <b class="nxt">적갈색 = 넥스트장 시세</b><br>
   등급(점수가 높을수록 조건을 많이 만족): <span class="kb" style="background:${JB_GRADE.S}">S</span> 70점 이상 · <span class="kb" style="background:${JB_GRADE.A}">A</span> 50~69점 · <span class="kb" style="background:${JB_GRADE.B}">B</span> 30~49점 · <span class="kb" style="background:${JB_GRADE.C||"#8a97a5"}">C</span> 30점 아래 · 종목을 누르면 차트로 가요</p>`;
   return sum+t1+t2;
 }
@@ -722,7 +726,7 @@ function renderFz(){
   if(fzMode==="jb"){
     const D=DATA.fz.jb;
     if(!D||!D.top){ el.innerHTML=`<div style="padding:30px 16px;text-align:center;color:var(--sub);font-size:13px">종베 — 새 수집기가 돌면 채워져요</div>`; return; }
-    const h=kstNow().slice(0,5);
+    const h=kstHM();   // 11/10 고침: 예전엔 날짜("11-10")를 시각으로 읽어 늘 '준비'로 나왔음
     const phase = h<"14:30" ? ["준비","지금은 지켜보는 시간 — 14:30부터 종베 준비"] :
                   h<="15:20" ? ["매수 시간","15:00~15:20 목표 비중 50% · 19:50~20:00 NXT 에서 50% 추가(선택)"] :
                   h<="20:00" ? ["마감 뒤","19:50~20:00 NXT 확인 후 추가 매수·정리"] : ["장 끝","내일 아침 8~10시가 파는 시간"];
@@ -800,7 +804,7 @@ function renderFz(){
       <td>${tbox(r[13],r[16])}</td>
       <td>${r.length>17?tbox(r[17],r[18]):"—"}</td></tr>`).join("")}
     ${rows.length?"":'<tr><td colspan="6" style="padding:20px;color:var(--sub)">오늘 고가가 +27% 이상인 종목 없음</td></tr>'}</table>
-    <p class="disc" style="padding:6px 8px">SF존 = 오늘 한 번이라도 전일 종가보다 27% 넘게 오른 종목 (상한가 따라잡기용 자리) · <b>SF가</b> = 그날 고가에서 4~5% 내려온 가운데 가격 · <b>F존 B1</b> = 고가에서 8% 내려온 가격 · 주황 상자 = 한 번이라도 닿음 (고가가 더 올라가도 상자는 남음) · 도달 시각은 5분마다 확인한 시각 · 거래대금 순 · 손절 = 고가 −10% 아래 · 10시 전 상한가·14시까지 상한가 못 간 종목은 관망/제외(사유 표시) · 종목 이름 <b class="nxt">적갈색</b> = 넥스트장에서도 거래</p>`;
+    <p class="disc" style="padding:6px 8px">SF존 = 오늘 한 번이라도 전일 종가보다 27% 넘게 오른 종목 (상한가 따라잡기용 자리) · <b>SF가</b> = 그날 고가에서 4~5% 내려온 가운데 가격 · <b>F존 B1</b> = 고가에서 8% 내려온 가격 · 주황 상자 = 한 번이라도 닿음 (고가가 더 올라가도 상자는 남음) · 도달 시각은 5분마다 확인한 시각 · 거래대금 순 · 손절 = 고가 −10% 아래 · 10시 전 상한가·14시까지 상한가 못 간 종목은 관망/제외(사유 표시) · 종목 이름 <b class="reg">검정</b> = 정규장 시세, <b class="nxt">적갈색</b> = 넥스트장 시세</p>`;
   }else if(fzMode==="fzp"){
     const rows=DATA.fz.fzp;
     if(!rows){ el.innerHTML=`<div style="padding:30px 16px;text-align:center;color:var(--sub);font-size:13px">F존+ — 새 수집기가 돌면 채워져요 (오늘 주도주부터 쌓임)</div>`; return; }
