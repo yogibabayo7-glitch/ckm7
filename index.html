@@ -83,6 +83,9 @@ td .big{font-weight:700;font-size:12.5px}
 .chart .hd{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:6px}
 .chart .hd .dn,.chart .hd .up{font-size:12.5px}
 canvas.kc{width:100%;height:230px;display:block;touch-action:none;border-radius:6px;background:#fff}
+.minmenu{position:absolute;left:0;top:120%;z-index:30;background:#fff;border:1px solid #dde3ea;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.14);padding:4px;display:flex;flex-direction:column;min-width:62px}
+.minmenu b{font-weight:500;padding:6px 10px;border-radius:6px;white-space:nowrap}
+.minmenu b.on{background:var(--brand);color:#fff}
 canvas.kc.sm{height:150px}
 .ctl{display:flex;align-items:center;gap:4px;font-size:11.5px;margin-bottom:6px;flex-wrap:wrap}
 .ctl .tf{display:flex;border:1.5px solid #c7d1dc;border-radius:6px;overflow:hidden}
@@ -915,29 +918,60 @@ function aggregate(bars,mode){ // 일봉 → 주봉/월봉 (t='YYMMDD')
     if(k!==key){key=k;cur={t:b.t,o:b.o,h:b.h,l:b.l,c:b.c,v:b.v};out.push(cur);}else{cur.h=Math.max(cur.h,b.h);cur.l=Math.min(cur.l,b.l);cur.c=b.c;cur.v+=b.v;cur.t=b.t;}}
   return out;
 }
-function tLabel(t,tf){ if(tf==="m")return t.slice(4,6)+":"+t.slice(6,8); if(tf==="d")return +t.slice(2,4)+"/"+ +t.slice(4,6); if(tf==="w")return +t.slice(2,4)+"/"+ +t.slice(4,6); return "20"+t.slice(0,2)+"."+ +t.slice(2,4); }
+function tLabel(t,tf){ if(isMin(tf))return t.slice(4,6)+":"+t.slice(6,8); if(tf==="d")return +t.slice(2,4)+"/"+ +t.slice(4,6); if(tf==="w")return +t.slice(2,4)+"/"+ +t.slice(4,6); return "20"+t.slice(0,2)+"."+ +t.slice(2,4); }
+/* ===== 11/17: 시간봉 1·3·5·10·15·30분 =====
+   m=15분(수집기가 주는 원본) · m30=15분봉 둘씩 묶음 · m1/m3/m5/m10 은 1분봉이 있어야 함 */
+const MIN_TFS=[["m1","1분"],["m3","3분"],["m5","5분"],["m10","10분"],["m","15분"],["m30","30분"]];
+const MIN_N={m1:1,m3:3,m5:5,m10:10,m:15,m30:30};
+function isMin(tf){ return MIN_N[tf]!=null; }
+function minLabel(tf){ const x=MIN_TFS.find(a=>a[0]===tf); return x?x[1]:"15분"; }
+/* 분봉 묶기 — t 는 'MMDDHHMM' */
+function aggMin(bars,n){
+  if(!bars.length||n<=1) return bars;
+  const out=[]; let cur=null,key=null;
+  for(const b of bars){
+    const day=b.t.slice(0,4), hh=+b.t.slice(4,6), mm=+b.t.slice(6,8);
+    const bucket=Math.floor((hh*60+mm)/n)*n;
+    const k=day+"_"+bucket;
+    if(k!==key){ key=k;
+      const t=day+String(Math.floor(bucket/60)).padStart(2,"0")+String(bucket%60).padStart(2,"0");
+      cur={t,o:b.o,h:b.h,l:b.l,c:b.c,v:b.v}; out.push(cur);
+    } else { cur.h=Math.max(cur.h,b.h); cur.l=Math.min(cur.l,b.l); cur.c=b.c; cur.v+=b.v; }
+  }
+  return out;
+}
+/* 그 시간봉의 봉들을 뽑아 줌 */
+function barsFor(src,tf){
+  if(tf==="d"||tf==="w"||tf==="M"){ let b=unpack(src.d); if(tf==="w")b=aggregate(b,"w"); if(tf==="M")b=aggregate(b,"M"); return b; }
+  if(tf==="m")   return unpack(src.m15);
+  if(tf==="m30") return aggMin(unpack(src.m15),30);
+  const one=unpack(src.m1);                       // 1·3·5·10분은 1분봉에서 만듦
+  if(!one.length) return [];
+  return tf==="m1"?one:aggMin(one,MIN_N[tf]);
+}
 function newChart(id,opt){
   const c=$("#"+id); if(!c) return null;
   const st=CH[id]=CH[id]||{id,tf:opt.tf||"m",ma:new Set([5,10,20,60,120]),count:40,end:null,bars:[],lines:[],fmt:opt.fmt||(v=>f(Math.round(v))),minC:12,maxC:300,small:!!opt.small,last:null};
   Object.assign(st,{src:opt.src,fmt:opt.fmt||st.fmt,lines:opt.lines||[],last:opt.last==null?null:opt.last,small:!!opt.small,title:opt.title||""});
-  if(!st.bound){st.bound=true;bindChart(c,st);}
+  if(opt.code!=null)st.code=opt.code;   // 11/17: setTf 전에 종목을 알아야 마지막 봉을 실시간으로 맞춤
+  if(st.boundEl!==c){st.boundEl=c;bindChart(c,st);}   // 11/17 고침: renderStock 이 캔버스를 새로 만들면 예전 캔버스에만 손가락 동작이 붙어 있어 확대가 안 됐음
   setTf(id,st.tf,true);
   return st;
 }
 function setTf(id,tf,silent){
   const st=CH[id];st.tf=tf;
   const src=st.src();
-  let bars= tf==="m"?unpack(src.m15):unpack(src.d);
-  if(tf!=="m"&&!bars.length) ensureAllCharts(id);   // 11/17: 일·주·월은 묶음(?charts=1)에만 있어서 그때 한 번 받아옴
-  if(tf==="w")bars=aggregate(bars,"w"); if(tf==="M")bars=aggregate(bars,"M");
+  let bars= barsFor(src,tf);
+  if(!isMin(tf)&&!bars.length) ensureAllCharts(id);   // 11/17: 일·주·월은 묶음(?charts=1)에만 있어서 그때 한 번 받아옴
   const keep=(st.prevTf===tf&&st.count); st.prevTf=tf;
-  st.bars=bars; st.end=bars.length; st.count=Math.min(bars.length||1,keep||(tf==="m"?40:tf==="d"?60:tf==="w"?52:36));
+  st.bars=bars; st.end=bars.length; st.count=Math.min(bars.length||1,keep||(isMin(tf)?40:tf==="d"?60:tf==="w"?52:36));
+  liveLastBar(st);
   renderCtl(id); drawChart(id);
 }
 function toggleMa(id,n){const st=CH[id];st.ma.has(n)?st.ma.delete(n):st.ma.add(n);renderCtl(id);drawChart(id);}
 function renderCtl(id){
   const st=CH[id],el=$("#"+id).previousElementSibling; if(!el||!el.classList.contains("ctl"))return;
-  el.innerHTML=`<span class="tf">${[["M","월"],["w","주"],["d","일"],["m","15분"]].map(([k,n])=>`<span class="${st.tf===k?"on":""}" onclick="setTf('${id}','${k}')">${n}</span>`).join("")}</span>
+  el.innerHTML=`<span class="tf">${[["M","월"],["w","주"],["d","일"]].map(([k,n])=>`<span class="${st.tf===k?"on":""}" onclick="setTf('${id}','${k}')">${n}</span>`).join("")}<span class="${isMin(st.tf)?"on":""}" style="position:relative" onclick="minMenu('${id}',event)">${isMin(st.tf)?minLabel(st.tf):"분"} \u25be${MIN_OPEN===id?`<span class="minmenu">${MIN_TFS.map(([k,n])=>`<b class="${st.tf===k?"on":""}" onclick="setTf('${id}','${k}');event.stopPropagation()">${n}</b>`).join("")}</span>`:""}</span></span>
     <span class="ma">${MA_DEF.map(([n,col])=>`<span class="${st.ma.has(n)?"on":""}" onclick="toggleMa('${id}',${n})"><i style="background:${col}"></i>${n}</span>`).join("")}</span>`;
 }
 function drawChart(id){
@@ -946,7 +980,8 @@ function drawChart(id){
   if(cv.width!==W*dpr||cv.height!==H*dpr){cv.width=W*dpr;cv.height=H*dpr;}
   const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
   g.font="10px 'Noto Sans KR',sans-serif";
-  const bars=st.bars; if(!bars.length){g.fillStyle="#999";g.textAlign="center";g.fillText(st.tf==="m"?"15분봉은 다음 수집 때부터 (장중 15분마다)":(ALL_BUSY?"일봉 받는 중… 잠시만요":"일봉은 다음 수집 때 채워져요"),W/2,H/2);return;}
+  const bars=st.bars; if(!bars.length){g.fillStyle="#999";g.textAlign="center";
+    g.fillText(st.tf==="m"||st.tf==="m30"?"15분봉은 다음 수집 때부터 (장중 15분마다)":isMin(st.tf)?minLabel(st.tf)+"은 수집기 업데이트 뒤부터 나와요":(ALL_BUSY?"일봉 받는 중… 잠시만요":"일봉은 다음 수집 때 채워져요"),W/2,H/2);return;}
   const padR=56,padB=16, volH=st.small?0:Math.round(H*.2), top=6, priceH=H-padB-volH-top-4;
   const end=Math.min(bars.length,Math.max(1,st.end)), start=Math.max(0,end-st.count), view=bars.slice(start,end);
   const bw=(W-padR-6)/st.count;
@@ -1228,9 +1263,9 @@ function renderStock(){
     h+=`<div class="card"><h6>F존 자리 <span class="sub">기준가 ${z.base?won(z.base):"—"} (${z.src})</span></h6><div class="kv">${z.lines.map(l=>`<div><span style="color:${l.col};font-weight:700">${l.tag}</span><b>${won(l.v)}</b></div>`).join("")||'<div><span>그날 고가를 아직 못 받았어요</span><b>—</b></div>'}</div></div>`;
     h+=`<div style="padding:4px 2px 14px">${naver}</div>`;
     $("#stkBody").innerHTML=h;$("#stkBody").scrollTop=0;
-    const src=()=>({m15:(CHARTS.m15||{})[code]||(!LIVE_ON?SAMPLE_CHARTS.m15[code]:""), d:((CHARTS.d||{})[code]||{}).b||(!LIVE_ON?(SAMPLE_CHARTS.d[code]||{}).b:"")});
+    const src=()=>({m15:(CHARTS.m15||{})[code]||(!LIVE_ON?SAMPLE_CHARTS.m15[code]:""), m1:(CHARTS.m1||{})[code]||"", d:((CHARTS.d||{})[code]||{}).b||(!LIVE_ON?(SAMPLE_CHARTS.d[code]||{}).b:"")});
     const prev=CH.stkChart; const tf=prev&&prev.code===code?prev.tf:"m";
-    const st=newChart("stkChart",{src,tf,fmt:v=>f(Math.round(v)),lines:z.lines,last:d?d.p:null}); if(st)st.code=code;
+    const st=newChart("stkChart",{src,tf,code,fmt:v=>f(Math.round(v)),lines:z.lines,last:d?d.p:null}); if(st)st.code=code;
     // 차트 블록을 ctl 자리에 맞춤 (ctl 은 canvas 바로 앞 형제여야 함)
     if(!(CHARTS.m15||{})[code]||!((CHARTS.d||{})[code])) ensureCharts(code);
     return;
@@ -1349,6 +1384,27 @@ async function ensureAllCharts(id){
   }catch(e){ console.log("묶음 차트 받기 실패",e); }
   ALL_BUSY=false;
   if(id&&CH[id]) setTf(id,CH[id].tf,true);
+}
+/* 11/17: 시간봉 고르는 작은 메뉴 */
+var MIN_OPEN=null;
+function minMenu(id,e){ if(e)e.stopPropagation(); MIN_OPEN=(MIN_OPEN===id?null:id); renderCtl(id); }
+document.addEventListener("click",()=>{ if(MIN_OPEN){const id=MIN_OPEN;MIN_OPEN=null;renderCtl(id);} });
+
+/* 11/17: 마지막 봉을 10초 시세로 계속 움직이게 (분봉 원본은 수집기가 15분마다 새로 줌) */
+function liveLastBar(st){
+  if(!st||!isMin(st.tf)||!st.bars.length) return;
+  const code=st.code; if(!code) return;
+  const s=(DATA.stk||{})[code]; const p=s&&s.p;
+  if(!p) return;
+  const b=st.bars[st.bars.length-1];
+  b.c=p; if(p>b.h)b.h=p; if(p<b.l)b.l=p;
+  st.last=p;
+}
+function liveTick(){
+  const st=CH.stkChart;
+  if(!st||!isMin(st.tf)||!$("#stkChart")) return;
+  if(!$("#p-stk")||!$("#p-stk").classList.contains("on")) return;
+  liveLastBar(st); drawChart("stkChart");
 }
 function afterCharts(code){
   if(code==="idx"){ if(curTab()==="total"&&CH.idxChart) setTf("idxChart",CH.idxChart.tf,true); }
@@ -1475,6 +1531,7 @@ function applyQuotes(Q,t){
   ["amt","up","dn"].forEach(k=>((DATA.rank||{})[k]||[]).forEach(r=>{const q=Q[r[5]];if(q){r[1]=q[0];r[2]=q[1];}}));
   Object.keys(Q).forEach(c=>{const s=(DATA.stk||{})[c];if(s){s.p=Q[c][0];s.r=Q[c][1];s.chg=Q[c][2];}});
   if(!n) return;
+  liveTick();                      // 11/17: 차트 마지막 봉도 같이 움직임
   renderGroups();renderRank();
   if(LAYERS.includes("thm")&&THM_NAME){const b=$("#thmBody"),st=b.scrollTop;b.innerHTML=themeHtml(themeByName(THM_NAME,THM_SOLO));b.scrollTop=st;}
   const el=$("#srcTxt");if(el)el.textContent=el.textContent.replace(/ · 시세 \d\d:\d\d:\d\d$/,"")+" · 시세 "+t;
