@@ -928,6 +928,7 @@ function setTf(id,tf,silent){
   const st=CH[id];st.tf=tf;
   const src=st.src();
   let bars= tf==="m"?unpack(src.m15):unpack(src.d);
+  if(tf!=="m"&&!bars.length) ensureAllCharts(id);   // 11/17: 일·주·월은 묶음(?charts=1)에만 있어서 그때 한 번 받아옴
   if(tf==="w")bars=aggregate(bars,"w"); if(tf==="M")bars=aggregate(bars,"M");
   const keep=(st.prevTf===tf&&st.count); st.prevTf=tf;
   st.bars=bars; st.end=bars.length; st.count=Math.min(bars.length||1,keep||(tf==="m"?40:tf==="d"?60:tf==="w"?52:36));
@@ -945,7 +946,7 @@ function drawChart(id){
   if(cv.width!==W*dpr||cv.height!==H*dpr){cv.width=W*dpr;cv.height=H*dpr;}
   const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
   g.font="10px 'Noto Sans KR',sans-serif";
-  const bars=st.bars; if(!bars.length){g.fillStyle="#999";g.textAlign="center";g.fillText(st.tf==="m"?"15분봉은 다음 수집 때부터 (장중 15분마다)":"일봉은 다음 수집 때 채워져요",W/2,H/2);return;}
+  const bars=st.bars; if(!bars.length){g.fillStyle="#999";g.textAlign="center";g.fillText(st.tf==="m"?"15분봉은 다음 수집 때부터 (장중 15분마다)":(ALL_BUSY?"일봉 받는 중… 잠시만요":"일봉은 다음 수집 때 채워져요"),W/2,H/2);return;}
   const padR=56,padB=16, volH=st.small?0:Math.round(H*.2), top=6, priceH=H-padB-volH-top-4;
   const end=Math.min(bars.length,Math.max(1,st.end)), start=Math.max(0,end-st.count), view=bars.slice(start,end);
   const bw=(W-padR-6)/st.count;
@@ -1300,15 +1301,54 @@ async function ensureCharts(code){
   try{
     const u=DATA.want_url||feedUrl();
     let got=null;
-    if(u){try{const r=await fetch(u+(u.includes("?")?"&":"?")+"chart="+code+"&t="+Date.now(),{redirect:"follow"});const t=await r.text();if(t.trim().startsWith("{"))got=JSON.parse(t);}catch(e){}}
-    if(got&&(got.m15!=null||got.d!=null||got.idx)){ if(code==="idx"){CHARTS.idx=got.idx||got;} else {if(got.m15!=null)CHARTS.m15[code]=got.m15; if(got.d)CHARTS.d[code]=got.d;} }
-    else{
+    /* 11/17 고침: 웹앱이 주는 모양이 두 가지라 둘 다 받아야 함
+         ?chart=종목코드 -> "11160900,206500,...;..."  (따옴표로 시작하는 15분봉 글자 하나)
+         ?chart=idx      -> {"kospi":"...","kosdaq":"..."}
+       예전 코드는 "{" 로 시작할 때만 읽고, m15/d 칸이 있어야만 받아들여서 둘 다 버렸음 -> 차트가 한 개도 안 나옴 */
+    if(u){try{
+      const r=await fetch(u+(u.includes("?")?"&":"?")+"chart="+code+"&t="+Date.now(),{redirect:"follow"});
+      const t=(await r.text()).trim();
+      if(t.startsWith("{")||t.startsWith('"')) got=JSON.parse(t);
+    }catch(e){}}
+    let ok=false;
+    if(typeof got==="string"){ if(got){ CHARTS.m15[code]=got; ok=true; } }
+    else if(got&&typeof got==="object"){
+      if(code==="idx"){ const ix=got.idx||got; if(ix&&(ix.kospi||ix.kosdaq)){ CHARTS.idx=ix; ok=true; } }
+      if(!ok&&(got.m15!=null||got.d!=null)){ if(got.m15!=null)CHARTS.m15[code]=got.m15; if(got.d)CHARTS.d[code]=got.d; ok=true; }
+    }
+    if(!ok){
       if(!CHART_ALL){CHART_ALL=await loadChartsFromDrive();}
       if(CHART_ALL){CHARTS=CHART_ALL;}
     }
   }catch(e){ console.log("차트 받기 실패",e); }
   chartBusy[code]=false;
   afterCharts(code);
+}
+
+/* 11/17 추가: 일·주·월봉은 ?chart=코드 로는 안 오고 묶음 ?charts=1 에만 있음.
+   7MB 쯤이라 처음 '일/주/월' 을 누를 때 딱 한 번만 받아 둠 (실측 약 4초). */
+let ALL_BUSY=false;
+async function ensureAllCharts(id){
+  if(!LIVE_ON||LIVE_CHARTS||CHART_ALL||ALL_BUSY) return;
+  ALL_BUSY=true;
+  try{
+    const u=DATA.want_url||feedUrl();
+    if(u){
+      const r=await fetch(u+(u.includes("?")?"&":"?")+"charts=1&t="+Date.now(),{redirect:"follow"});
+      const t=(await r.text()).trim();
+      if(t.startsWith("{")){
+        const g=JSON.parse(t);
+        if(g&&(g.m15||g.d)){
+          CHART_ALL=g;
+          CHARTS.m15=Object.assign({},g.m15||{},CHARTS.m15||{});
+          CHARTS.d=Object.assign({},g.d||{},CHARTS.d||{});
+          if(g.idx&&!(CHARTS.idx&&(CHARTS.idx.kospi||CHARTS.idx.kosdaq))) CHARTS.idx=g.idx;
+        }
+      }
+    }
+  }catch(e){ console.log("묶음 차트 받기 실패",e); }
+  ALL_BUSY=false;
+  if(id&&CH[id]) setTf(id,CH[id].tf,true);
 }
 function afterCharts(code){
   if(code==="idx"){ if(curTab()==="total"&&CH.idxChart) setTf("idxChart",CH.idxChart.tf,true); }
