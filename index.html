@@ -83,6 +83,8 @@ td .big{font-weight:700;font-size:12.5px}
 .chart .hd{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:6px}
 .chart .hd .dn,.chart .hd .up{font-size:12.5px}
 canvas.kc{width:100%;height:230px;display:block;touch-action:none;border-radius:6px;background:#fff}
+.tf.tfmin{overflow:visible!important;margin-left:4px}
+.tf.tfmin>span{position:relative}
 .minmenu{position:absolute;left:0;top:120%;z-index:30;background:#fff;border:1px solid #dde3ea;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.14);padding:4px;display:flex;flex-direction:column;min-width:62px}
 .minmenu b{font-weight:500;padding:6px 10px;border-radius:6px;white-space:nowrap}
 .minmenu b.on{background:var(--brand);color:#fff}
@@ -971,7 +973,7 @@ function setTf(id,tf,silent){
 function toggleMa(id,n){const st=CH[id];st.ma.has(n)?st.ma.delete(n):st.ma.add(n);renderCtl(id);drawChart(id);}
 function renderCtl(id){
   const st=CH[id],el=$("#"+id).previousElementSibling; if(!el||!el.classList.contains("ctl"))return;
-  el.innerHTML=`<span class="tf">${[["M","월"],["w","주"],["d","일"]].map(([k,n])=>`<span class="${st.tf===k?"on":""}" onclick="setTf('${id}','${k}')">${n}</span>`).join("")}<span class="${isMin(st.tf)?"on":""}" style="position:relative" onclick="minMenu('${id}',event)">${isMin(st.tf)?minLabel(st.tf):"분"} \u25be${MIN_OPEN===id?`<span class="minmenu">${MIN_TFS.map(([k,n])=>`<b class="${st.tf===k?"on":""}" onclick="setTf('${id}','${k}');event.stopPropagation()">${n}</b>`).join("")}</span>`:""}</span></span>
+  el.innerHTML=`<span class="tf">${[["M","월"],["w","주"],["d","일"]].map(([k,n])=>`<span class="${st.tf===k?"on":""}" onclick="setTf('${id}','${k}')">${n}</span>`).join("")}</span><span class="tf tfmin">${`<span class="${isMin(st.tf)?"on":""}" onclick="minMenu('${id}',event)">${isMin(st.tf)?minLabel(st.tf):"분"} \u25be${MIN_OPEN===id?`<span class="minmenu">${MIN_TFS.map(([k,n])=>`<b class="${st.tf===k?"on":""}" onclick="setTf('${id}','${k}');event.stopPropagation()">${n}</b>`).join("")}</span>`:""}</span>`}</span>
     <span class="ma">${MA_DEF.map(([n,col])=>`<span class="${st.ma.has(n)?"on":""}" onclick="toggleMa('${id}',${n})"><i style="background:${col}"></i>${n}</span>`).join("")}</span>`;
 }
 function drawChart(id){
