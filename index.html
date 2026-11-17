@@ -935,7 +935,10 @@ function aggMin(bars,n){
   const out=[]; let cur=null,key=null;
   for(const b of bars){
     const day=b.t.slice(0,4), hh=+b.t.slice(4,6), mm=+b.t.slice(6,8);
-    const bucket=Math.floor((hh*60+mm)/n)*n;
+    /* 11/17 고침: 봉 시각은 '마감 시각'이라 내림(floor)으로 묶으면 한 칸씩 어긋남.
+       13:45 마감봉(13:30~13:45)과 14:00 마감봉(13:45~14:00)이 30분봉 하나가 돼야 함. */
+    const tot=hh*60+mm;
+    const bucket=(tot%n===0)?tot:(Math.floor((tot-1)/n)+1)*n;
     const k=day+"_"+bucket;
     if(k!==key){ key=k;
       const t=day+String(Math.floor(bucket/60)).padStart(2,"0")+String(bucket%60).padStart(2,"0");
