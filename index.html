@@ -965,7 +965,11 @@ function setTf(id,tf,silent){
   const src=st.src();
   let bars= barsFor(src,tf);
   if(!isMin(tf)&&!bars.length) ensureAllCharts(id);   // 11/17: 일·주·월은 묶음(?charts=1)에만 있어서 그때 한 번 받아옴
-  const keep=(st.prevTf===tf&&st.count); st.prevTf=tf;
+  /* 11/17 고침: 차트가 아직 안 왔을 때 한 번 그리면 st.count 가 1 이 되는데,
+     그 1 을 '사용자가 맞춰 둔 배율'로 착각해 그대로 물고 가서 봉이 1개만 보였음.
+     앞 그림에 봉이 있었을 때만 배율을 이어받는다. */
+  const had=st.bars.length;
+  const keep=(st.prevTf===tf&&had>1&&st.count>1)?st.count:0; st.prevTf=tf;
   st.bars=bars; st.end=bars.length; st.count=Math.min(bars.length||1,keep||(isMin(tf)?40:tf==="d"?60:tf==="w"?52:36));
   liveLastBar(st);
   renderCtl(id); drawChart(id);
