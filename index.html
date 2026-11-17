@@ -944,14 +944,53 @@ function aggMin(bars,n){
   }
   return out;
 }
+/* ===== 11/17: 화면이 스스로 '지금 봉'을 만든다 (티마처럼 실시간에 가깝게) =====
+   수집기가 주는 봉은 최대 30분까지 묵을 수 있음(종목당 15분 간격 + 371종목 한 바퀴 ~30분 + 드라이브 15분).
+   폰은 10초마다 현재가를 받고 있으므로, 지금 만들어지는 봉은 화면이 직접 만들고 10초마다 갱신한다.
+   수집기 봉 = 지난 기록 / 지금 봉 = 화면이 직접. 둘을 합쳐 그린다. */
+var LIVEB={_base:0};                 // 종목코드 -> { 'MMDDHHMM': {t,o,h,l,c,v} }
+function liveBase(){ return (CHARTS.m5&&Object.keys(CHARTS.m5).length)?5:15; }
+function barSlot(d,n){               // 키움과 같은 '마감 시각' 방식 (09:01~09:15 -> 0915)
+  const total=d.getHours()*60+d.getMinutes();
+  const slot=(total%n===0)?total:(Math.floor((total-1)/n)+1)*n;
+  const mmdd=String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");
+  return mmdd+String(Math.floor(slot/60)%24).padStart(2,"0")+String(slot%60).padStart(2,"0");
+}
+function feedLive(code,p){
+  p=+p; if(!p||!isFinite(p)) return;
+  const d=new Date(), hm=d.getHours()*60+d.getMinutes();
+  if(hm<9*60||hm>15*60+32) return;                 // 장중에만 봉을 만든다
+  const n=liveBase();
+  if(LIVEB._base!==n){ for(const k of Object.keys(LIVEB)) if(k!=="_base") delete LIVEB[k]; LIVEB._base=n; }
+  const t=barSlot(d,n);
+  const m=LIVEB[code]||(LIVEB[code]={});
+  const b=m[t];
+  if(!b) m[t]={t,o:p,h:p,l:p,c:p,v:0};
+  else { b.c=p; if(p>b.h)b.h=p; if(p<b.l)b.l=p; }
+  const ks=Object.keys(m); if(ks.length>60){ ks.sort(); delete m[ks[0]]; }
+}
+/* 수집기 봉(지난 기록) 뒤에 화면이 만든 봉을 이어 붙임 */
+function mergeLive(code,bars){
+  const m=code&&LIVEB[code]; if(!m) return bars;
+  const out=bars.slice();
+  const lastT=out.length?out[out.length-1].t:"";
+  for(const t of Object.keys(m).sort()){
+    if(t<lastT) continue;
+    const lb=m[t];
+    if(t===lastT){ const b=out[out.length-1]; b.c=lb.c; b.h=Math.max(b.h,lb.h); b.l=Math.min(b.l,lb.l); }
+    else out.push({t,o:lb.o,h:lb.h,l:lb.l,c:lb.c,v:lb.v});
+  }
+  return out;
+}
 /* 그 시간봉의 봉들을 뽑아 줌 */
-function barsFor(src,tf){
+function barsFor(src,tf,code){
   if(tf==="d"||tf==="w"||tf==="M"){ let b=unpack(src.d); if(tf==="w")b=aggregate(b,"w"); if(tf==="M")b=aggregate(b,"M"); return b; }
-  const five=unpack(src.m5);                      // 5분봉이 있으면 5·10·15·30 을 전부 여기서 만듦
-  if(five.length) return tf==="m5"?five:aggMin(five,MIN_N[tf]);
-  if(tf==="m")   return unpack(src.m15);          // 5분봉이 아직 없으면 15분봉으로
-  if(tf==="m30") return aggMin(unpack(src.m15),30);
-  return [];                                      // 5분·10분은 수집기가 5분봉을 받아와야 나옴
+  const five=unpack(src.m5);
+  const bn = five.length?5:15;                    // 바탕 분봉 (5분봉이 오면 5, 아직은 15)
+  let base = mergeLive(code, five.length?five:unpack(src.m15));
+  if(MIN_N[tf]===bn) return base;
+  if(MIN_N[tf]<bn)  return [];                    // 바탕보다 짧은 봉은 못 만듦 (5·10분은 5분봉이 와야 함)
+  return aggMin(base,MIN_N[tf]);
 }
 function newChart(id,opt){
   const c=$("#"+id); if(!c) return null;
@@ -965,7 +1004,7 @@ function newChart(id,opt){
 function setTf(id,tf,silent){
   const st=CH[id];st.tf=tf;
   const src=st.src();
-  let bars= barsFor(src,tf);
+  let bars= barsFor(src,tf,st.code);
   if(!isMin(tf)&&!bars.length) ensureAllCharts(id);   // 11/17: 일·주·월은 묶음(?charts=1)에만 있어서 그때 한 번 받아옴
   /* 11/17 고침: 차트가 아직 안 왔을 때 한 번 그리면 st.count 가 1 이 되는데,
      그 1 을 '사용자가 맞춰 둔 배율'로 착각해 그대로 물고 가서 봉이 1개만 보였음.
@@ -1399,20 +1438,20 @@ function minMenu(id,e){ if(e)e.stopPropagation(); MIN_OPEN=(MIN_OPEN===id?null:i
 document.addEventListener("click",()=>{ if(MIN_OPEN){const id=MIN_OPEN;MIN_OPEN=null;renderCtl(id);} });
 
 /* 11/17: 마지막 봉을 10초 시세로 계속 움직이게 (분봉 원본은 수집기가 15분마다 새로 줌) */
-function liveLastBar(st){
-  if(!st||!isMin(st.tf)||!st.bars.length) return;
+function liveLastBar(st){            // 오른쪽 현재가 표시만 (봉 자체는 mergeLive 가 이어 붙임)
+  if(!st||!isMin(st.tf)) return;
   const code=st.code; if(!code) return;
   const s=(DATA.stk||{})[code]; const p=s&&s.p;
-  if(!p) return;
-  const b=st.bars[st.bars.length-1];
-  b.c=p; if(p>b.h)b.h=p; if(p<b.l)b.l=p;
-  st.last=p;
+  if(p) st.last=p;
 }
 function liveTick(){
   const st=CH.stkChart;
   if(!st||!isMin(st.tf)||!$("#stkChart")) return;
   if(!$("#p-stk")||!$("#p-stk").classList.contains("on")) return;
-  liveLastBar(st); drawChart("stkChart");
+  const atEnd=(st.end>=st.bars.length);          // 오른쪽 끝을 보고 있을 때만 따라감
+  setTf(st.id,st.tf,true);
+  if(!atEnd) st.end=Math.min(st.end,st.bars.length);
+  drawChart("stkChart");
 }
 function afterCharts(code){
   if(code==="idx"){ if(curTab()==="total"&&CH.idxChart) setTf("idxChart",CH.idxChart.tf,true); }
@@ -1538,8 +1577,9 @@ function applyQuotes(Q,t){
   });
   ["amt","up","dn"].forEach(k=>((DATA.rank||{})[k]||[]).forEach(r=>{const q=Q[r[5]];if(q){r[1]=q[0];r[2]=q[1];}}));
   Object.keys(Q).forEach(c=>{const s=(DATA.stk||{})[c];if(s){s.p=Q[c][0];s.r=Q[c][1];s.chg=Q[c][2];}});
+  Object.keys(Q).forEach(c=>feedLive(c,Q[c][0]));   // 11/17: 10초마다 '지금 봉'을 화면이 직접 만듦
   if(!n) return;
-  liveTick();                      // 11/17: 차트 마지막 봉도 같이 움직임
+  liveTick();
   renderGroups();renderRank();
   if(LAYERS.includes("thm")&&THM_NAME){const b=$("#thmBody"),st=b.scrollTop;b.innerHTML=themeHtml(themeByName(THM_NAME,THM_SOLO));b.scrollTop=st;}
   const el=$("#srcTxt");if(el)el.textContent=el.textContent.replace(/ · 시세 \d\d:\d\d:\d\d$/,"")+" · 시세 "+t;
